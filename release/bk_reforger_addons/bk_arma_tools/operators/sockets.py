@@ -73,10 +73,11 @@ class ARVEHICLES_OT_create_socket(bpy.types.Operator):
         if self.custom_name:
             socket_name = self.custom_name
         else:
-            socket_name = f"Socket_{self.socket_type.replace('_', ' ').title().replace(' ', '_')}"
-            existing_sockets = [o for o in bpy.data.objects if socket_name in o.name]
-            if existing_sockets:
-                socket_name = f"{socket_name}_{len(existing_sockets) + 1:02d}"
+            base_name = f"SOCKET_{self.socket_type}"
+            idx = 1
+            while f"{base_name}_{idx:02d}" in bpy.data.objects:
+                idx += 1
+            socket_name = f"{base_name}_{idx:02d}"
 
         # Create socket
         socket = bpy.data.objects.new(socket_name, None)

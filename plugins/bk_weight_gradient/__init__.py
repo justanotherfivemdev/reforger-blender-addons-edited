@@ -44,6 +44,7 @@ def _wg_load_post(_dummy=None):
         _ensure_anchors(props)
 
 
+_wg_init_timer = None
 _wg_vg_sync_guard = False
 _wg_sync_pending = False
 
@@ -92,10 +93,19 @@ def register():
     bpy.types.Scene.weight_gradient = PointerProperty(type=WeightGradientProperties)
     bpy.app.handlers.load_post.append(_wg_load_post)
     bpy.app.handlers.depsgraph_update_post.append(_wg_sync_active_vg)
-    bpy.app.timers.register(lambda: (_wg_load_post(), None)[-1], first_interval=0.0)
+    global _wg_init_timer
+    def _wg_init():
+        _wg_load_post()
+        return None
+    _wg_init_timer = _wg_init
+    bpy.app.timers.register(_wg_init, first_interval=0.0)
 
 
 def unregister():
+    global _wg_init_timer
+    if _wg_init_timer and bpy.app.timers.is_registered(_wg_init_timer):
+        bpy.app.timers.unregister(_wg_init_timer)
+    _wg_init_timer = None
     if _wg_load_post in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_wg_load_post)
     if _wg_sync_active_vg in bpy.app.handlers.depsgraph_update_post:

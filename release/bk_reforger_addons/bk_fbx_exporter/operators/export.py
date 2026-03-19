@@ -234,21 +234,23 @@ class ExportArmaReforgerAsset(bpy.types.Operator, ExportHelper):
             return None
 
         # Register a timer that will call undo_function after delay_seconds
+        # bpy.app.timers uses seconds for first_interval
         if delay_seconds > 0:
-            # Convert to milliseconds for the timer
-            delay_ms = delay_seconds
             print(f"Auto-undo: Scheduling undo operation with {delay_seconds} second delay...")
-            bpy.app.timers.register(undo_function, first_interval=delay_ms)
+            bpy.app.timers.register(undo_function, first_interval=delay_seconds)
         else:
             # If no delay, just call it immediately
             undo_function()
 
     def delete_selected_collection(self, context):
-        """Delete the selected collection"""
+        """Delete the selected collection temporarily (restored via undo)"""
         collection_name = self.collection_to_delete
         if collection_name == "NONE" or collection_name not in bpy.data.collections:
             self.report({'WARNING'}, "No valid collection selected for deletion")
             return False
+
+        self.report({'WARNING'}, f"Collection '{collection_name}' will be temporarily removed. "
+                     "If undo fails, use Edit > Undo History to restore it.")
 
         # Get the collection by name
         collection = bpy.data.collections[collection_name]
@@ -430,6 +432,26 @@ class ExportArmaReforgerAsset(bpy.types.Operator, ExportHelper):
             print(traceback.format_exc())
 
     def execute(self, context):
+        # Run pre-export validation
+        from ..validators import validate_export_objects
+        export_objects = list(context.selected_objects) if self.export_mode == 'INDIVIDUAL' else list(context.scene.objects)
+        issues = validate_export_objects(export_objects)
+
+        errors = [msg for sev, msg in issues if sev == 'ERROR']
+        warnings = [msg for sev, msg in issues if sev == 'WARNING']
+
+        if errors:
+            for msg in errors:
+                self.report({'ERROR'}, msg)
+            self.report({'ERROR'}, f"Export blocked: {len(errors)} error(s) found. Fix before exporting.")
+            return {'CANCELLED'}
+
+        for msg in warnings:
+            self.report({'WARNING'}, msg)
+
+        if warnings:
+            self.report({'INFO'}, f"Export proceeding with {len(warnings)} warning(s)")
+
         # Explicitly push an undo step before we start
         if (self.center_to_origin or self.delete_collection or self.align_to_axis) and self.use_auto_undo:
             bpy.ops.ed.undo_push(message="Before Arma Reforger Export")

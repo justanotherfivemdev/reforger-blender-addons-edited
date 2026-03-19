@@ -27,16 +27,16 @@ import bmesh
 # Default socket names for different building parts
 # Format follows the same pattern as working weapon tool sockets
 BUILDING_SOCKET_NAMES = {
-    "wall": "slot_building_wall_socket",
-    "door": "slot_building_door_socket", 
-    "window": "slot_building_window_socket",
-    "roof": "slot_building_roof_socket",
-    "floor": "slot_building_floor_socket",
-    "stairs": "slot_building_stairs_socket",
-    "column": "slot_building_column_socket",
-    "railing": "slot_building_railing_socket",
-    "beam": "slot_building_beam_socket",
-    "other": "slot_building_part_socket"
+    "wall": "SOCKET_building_wall",
+    "door": "SOCKET_building_door",
+    "window": "SOCKET_building_window",
+    "roof": "SOCKET_building_roof",
+    "floor": "SOCKET_building_floor",
+    "stairs": "SOCKET_building_stairs",
+    "column": "SOCKET_building_column",
+    "railing": "SOCKET_building_railing",
+    "beam": "SOCKET_building_beam",
+    "other": "SOCKET_building_part"
 }
 
 # Building part types for separation and socket creation
@@ -124,8 +124,8 @@ class ARBUILDINGS_OT_orient_building(bpy.types.Operator):
         max_x, max_y, max_z = float('-inf'), float('-inf'), float('-inf')
         
         for obj in mesh_objects:
-            for vert in obj.data.vertices:
-                world_co = obj.matrix_world @ vert.co
+            for corner in obj.bound_box:
+                world_co = obj.matrix_world @ Vector(corner)
                 min_x = min(min_x, world_co.x)
                 min_y = min(min_y, world_co.y)
                 min_z = min(min_z, world_co.z)
@@ -287,7 +287,11 @@ class ARBUILDINGS_OT_separate_component(bpy.types.Operator):
         # Create a socket empty if requested
         socket = None
         if self.add_socket:
-            socket_name = f"{BUILDING_SOCKET_NAMES[self.component_type].lower()}_{len([o for o in bpy.data.objects if BUILDING_SOCKET_NAMES[self.component_type].lower() in o.name.lower()]) + 1}"
+            base_name = BUILDING_SOCKET_NAMES[self.component_type]
+            idx = 1
+            while f"{base_name}_{idx:02d}" in bpy.data.objects:
+                idx += 1
+            socket_name = f"{base_name}_{idx:02d}"
             socket = bpy.data.objects.new(socket_name, None)
             socket.empty_display_type = 'PLAIN_AXES'
             socket.empty_display_size = 0.05
@@ -312,8 +316,6 @@ class ARBUILDINGS_OT_separate_component(bpy.types.Operator):
             socket["attached_part"] = new_obj.name
             socket["building_part"] = "attachment_point"
             
-            # DO NOT PARENT THE SOCKET - removed parenting line
-        
         # Set origin to socket position if requested
         if self.add_socket and self.set_origin_to_socket:
             # Store the object's world matrix before changing origin
@@ -609,9 +611,7 @@ class ARBUILDINGS_OT_create_building_socket(bpy.types.Operator):
         # Add socket properties
         socket["socket_type"] = self.socket_type
         socket["building_part"] = "attachment_point"
-        
-        # DO NOT PARENT THE SOCKET - removed parenting line
-        
+
         # Now we can safely select objects
         for obj in context.selected_objects:
             obj.select_set(False)

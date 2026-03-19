@@ -125,7 +125,7 @@ class ARMA_OT_process_nla(Operator):
                     first_new_action = new_action
 
             except Exception as e:
-                print(f"Error processing {item.original_name}: {str(e)}")
+                self.report({'WARNING'}, f"Error processing {item.original_name}: {str(e)}")
                 error_count += 1
 
         # Set active action based on the "Set First as Active" flag

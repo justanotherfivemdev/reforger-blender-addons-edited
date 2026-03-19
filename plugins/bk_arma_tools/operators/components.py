@@ -15,11 +15,15 @@ def _get_available_bones(self, context):
     """Module-level bone picker — usable before class methods are defined."""
     default_label = "w_root (Default)" if get_mode(context) == 'WEAPON' else "v_body (Default)"
     items = [('NONE', default_label, "")]
-    for obj in bpy.data.objects:
-        if obj.type == 'ARMATURE':
-            for bone in obj.data.bones:
-                items.append((bone.name, bone.name, ""))
-            break
+    armature = context.active_object if context.active_object and context.active_object.type == 'ARMATURE' else None
+    if not armature:
+        for obj in context.selected_objects:
+            if obj.type == 'ARMATURE':
+                armature = obj
+                break
+    if armature:
+        for bone in armature.data.bones:
+            items.append((bone.name, bone.name, ""))
     return items
 
 

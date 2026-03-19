@@ -23,6 +23,7 @@ class ARPROFILE_PG_track(PropertyGroup):
             ('TRA', "TRA - Translation & Rotation Absolute", "Full transform absolute (replaces underlying animation)"),
             ('TRD', "TRD - Translation & Rotation Differential", "Full transform differential/additive (adds to underlying animation)"),
             ('TRG', "TRG - Translation & Rotation Generated", "Generated bone in global space"),
+            ('RD', "RD - Rotation Differential", "Rotation only differential/additive"),
             ('RA', "RA - Rotation Absolute", "Rotation only absolute (replaces underlying rotation)"),
             ('TA', "TA - Translation Absolute", "Translation only absolute"),
         ],
@@ -52,10 +53,15 @@ class ARPROFILE_PG_settings(PropertyGroup):
         default=""
     )
 
+    def _warn_default_fn(self, context):
+        if self.default_fn:
+            print("WARNING: defaultFn should be empty for Blender exports. Non-empty values corrupt additive animations.")
+
     default_fn: StringProperty(
         name="Default Function",
-        description="Default GlobalSpace export modifier (must be empty for Blender; defaultFnMB is MotionBuilder only)",
-        default=""
+        description="Default GlobalSpace export modifier (MUST be empty for Blender exports; non-empty corrupts additive animations)",
+        default="",
+        update=_warn_default_fn
     )
 
     default_local_fn: StringProperty(

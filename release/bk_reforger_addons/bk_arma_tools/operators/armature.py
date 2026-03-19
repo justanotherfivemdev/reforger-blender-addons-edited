@@ -64,7 +64,7 @@ class ARVEHICLES_OT_create_armature(bpy.types.Operator):
 
         if body_mesh:
             vg = body_mesh.vertex_groups.get(skin_bone) or body_mesh.vertex_groups.new(name=skin_bone)
-            all_verts = [v.index for v in body_mesh.data.vertices]
+            all_verts = list(range(len(body_mesh.data.vertices)))
             vg.add(all_verts, 1.0, 'REPLACE')
 
             if not any(mod.type == 'ARMATURE' for mod in body_mesh.modifiers):

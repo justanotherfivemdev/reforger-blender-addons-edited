@@ -138,6 +138,8 @@ def restore_constraints(obj, constraint_data):
                         if target_obj:
                             constraint.target = target_obj
                             print(f"Set target to: {target_obj.name}")
+                        else:
+                            print(f"WARNING: Target object '{constraint_info['target']}' not found for constraint '{constraint_info['name']}'")
 
                     # Set subtarget
                     if constraint_info['subtarget'] and hasattr(constraint, 'subtarget'):
@@ -165,6 +167,8 @@ def restore_constraints(obj, constraint_data):
                                 target_obj = bpy.context.scene.objects.get(bone_constraint_info['target'])
                                 if target_obj:
                                     constraint.target = target_obj
+                                else:
+                                    print(f"WARNING: Target object '{bone_constraint_info['target']}' not found for constraint '{bone_constraint_info['name']}'")
 
                             # Set subtarget (bone name)
                             if bone_constraint_info['subtarget'] and hasattr(constraint, 'subtarget'):
@@ -185,6 +189,8 @@ def restore_constraints(obj, constraint_data):
                     target_obj = bpy.context.scene.objects.get(constraint_info['target'])
                     if target_obj:
                         constraint.target = target_obj
+                    else:
+                        print(f"WARNING: Target object '{constraint_info['target']}' not found for constraint '{constraint_info['name']}'")
 
                 # Set subtarget
                 if constraint_info['subtarget'] and hasattr(constraint, 'subtarget'):
