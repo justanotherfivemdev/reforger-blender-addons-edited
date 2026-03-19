@@ -138,6 +138,7 @@ class ARMA_PT_nla_panel(Panel):
         header.label(text="Utilities", icon='TOOL_SETTINGS')
         if body:
             body.operator("arma.create_new_action", text="Create New Action", icon='ADD')
+            body.operator("arma.export_action_list", text="Export Action List", icon='TEXT')
             body.operator("arma.cleanup_export_duplicates", text="Clean Up Export Duplicates", icon='TRASH')
 
 

@@ -10,6 +10,7 @@ from .nla import (
     ARMA_OT_delete_action,
     ARMA_OT_update_switcher,
     ARMA_OT_clear_search,
+    ARMA_OT_export_action_list,
     ARMA_OT_cleanup_export_duplicates,
 )
 
@@ -23,5 +24,6 @@ classes = (
     ARMA_OT_clear_search,
     ARMA_OT_create_new_action,
     ARMA_OT_delete_action,
+    ARMA_OT_export_action_list,
     ARMA_OT_cleanup_export_duplicates,
 )

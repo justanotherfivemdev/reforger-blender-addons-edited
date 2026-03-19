@@ -359,6 +359,70 @@ class ARMA_OT_clear_search(Operator):
         return {'FINISHED'}
 
 
+class ARMA_OT_export_action_list(Operator):
+    bl_idname = "arma.export_action_list"
+    bl_label = "Export Action List"
+    bl_description = (
+        "Export a text file listing all managed actions with frame ranges, "
+        "useful for setting up .asi files in Workbench"
+    )
+
+    filepath: StringProperty(subtype='FILE_PATH', default="//action_list.txt")
+    filter_glob: StringProperty(default="*.txt", options={'HIDDEN'})
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        import os
+
+        arma_props = context.scene.arma_nla_props
+        prefix = arma_props.asset_prefix.strip()
+        asset_type = arma_props.asset_type
+
+        if not prefix:
+            self.report({'ERROR'}, "Set an asset prefix first")
+            return {'CANCELLED'}
+
+        include_patterns = get_include_patterns(prefix, asset_type)
+        armature = get_armature(context)
+
+        lines = []
+        lines.append(f"# Arma Reforger Action List")
+        lines.append(f"# Asset Type: {asset_type}  Prefix: {prefix}")
+        if armature:
+            lines.append(f"# Armature: {armature.name}")
+        lines.append(f"# {'Action Name':<50} {'Start':>8} {'End':>8} {'Frames':>8}")
+        lines.append(f"# {'-'*50} {'-'*8} {'-'*8} {'-'*8}")
+
+        count = 0
+        for action in sorted(bpy.data.actions, key=lambda a: a.name):
+            if not any(action.name.startswith(p) for p in include_patterns):
+                continue
+            start = int(action.frame_range[0])
+            end = int(action.frame_range[1])
+            length = end - start
+            lines.append(f"  {action.name:<50} {start:>8} {end:>8} {length:>8}")
+            count += 1
+
+        if count == 0:
+            self.report({'WARNING'}, "No matching actions found")
+            return {'CANCELLED'}
+
+        filepath = bpy.path.abspath(self.filepath)
+        try:
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(lines) + '\n')
+        except OSError as e:
+            self.report({'ERROR'}, f"Cannot write file: {e}")
+            return {'CANCELLED'}
+
+        self.report({'INFO'}, f"Exported {count} action(s) to {filepath}")
+        return {'FINISHED'}
+
+
 class ARMA_OT_cleanup_export_duplicates(Operator):
     bl_idname = "arma.cleanup_export_duplicates"
     bl_label = "Clean Up Export Duplicates"

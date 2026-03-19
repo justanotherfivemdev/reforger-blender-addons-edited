@@ -26,6 +26,13 @@ class ARVEHICLES_PT_panel(bpy.types.Panel):
             box.prop(scene, "arvehicles_custom_prefix", text="Prefix")
 
         # ============================================================
+        # SCENE TOOLS
+        # ============================================================
+        box = layout.box()
+        box.label(text="Scene Tools", icon='SCENE_DATA')
+        box.operator("arvehicles.sort_into_collections", text="Sort into Collections", icon='OUTLINER')
+
+        # ============================================================
         # MESH TOOLS
         # ============================================================
         box = layout.box()
@@ -52,7 +59,19 @@ class ARVEHICLES_PT_panel(bpy.types.Panel):
         if mode == 'VEHICLE':
             row = box.row(align=True)
             row.operator("arvehicles.create_wheel_collisions", text="Wheel Collision", icon='MESH_CYLINDER')
-            row.operator("arvehicles.create_center_of_mass", text="Center of Mass", icon='EMPTY_SINGLE_ARROW')
+        row = box.row(align=True)
+        row.operator("arvehicles.auto_center_of_mass", text="Auto COM", icon='EMPTY_SINGLE_ARROW')
+        row.operator("arvehicles.create_occluder", text="Occluder", icon='MESH_PLANE')
+        row = box.row(align=True)
+        row.operator("arvehicles.create_land_contacts", text="Land Contacts", icon='EMPTY_AXIS')
+        row.operator("arvehicles.batch_collider_setup", text="Batch Setup", icon='PREFERENCES')
+
+        # ============================================================
+        # MATERIALS
+        # ============================================================
+        box = layout.box()
+        box.label(text="Materials", icon='MATERIAL')
+        box.operator("arvehicles.game_material_rename", text="Rename Game Material", icon='GREASEPENCIL')
 
         # ============================================================
         # COMPONENT SEPARATION

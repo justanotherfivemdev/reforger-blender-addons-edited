@@ -24,6 +24,12 @@ class VIEW3D_PT_arma_reforger_tools(Panel):
         box = layout.box()
         box.label(text="Options available in export dialog", icon='INFO')
 
+        # Quality & Batch tools
+        box = layout.box()
+        box.label(text="Quality & Batch", icon='CHECKMARK')
+        box.operator("arexport.run_mqa", text="Run MQA Check", icon='VIEWZOOM')
+        box.operator("arexport.batch_export_collections", text="Batch Export Collections", icon='COLLECTION_NEW')
+
 
 classes = (
     VIEW3D_PT_arma_reforger_tools,

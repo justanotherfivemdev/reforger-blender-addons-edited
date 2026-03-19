@@ -3,6 +3,82 @@ from bpy.props import StringProperty, EnumProperty, IntProperty
 from bpy.types import Operator
 
 
+# --- Auto-detection helpers for .apr export flags ---
+
+# Bones that get TRG (generated in global space) with a generator function
+_TRG_BONES = {'scene_root'}
+
+# Bones that get TRA (absolute transform — locomotion base bones)
+_TRA_BONES = {'entityposition', 'hips', 'collision'}
+
+# Bones that get RD (rotation-only differential — turrets, steering, etc.)
+_RD_PREFIXES = ('v_turret', 'v_steer', 'v_hatch', 'v_door',
+                'w_bolt', 'w_trigger', 'w_safety', 'w_selector',
+                'w_charging', 'w_magazine', 'w_hammer', 'w_sight')
+
+# Bones that get RA (rotation absolute — aiming bones)
+_RA_PREFIXES = ('w_aim',)
+
+# Bones that get TA (translation absolute)
+_TA_PREFIXES = ('v_susp',)
+
+
+def _auto_detect_flags(bone_name):
+    """Return (flags, use_gen_fn, gen_fn_name) for a bone name.
+
+    Rules (evaluated in order):
+    1. scene_root → TRG + generateSceneRootMB
+    2. entityposition / hips / collision → TRA
+    3. v_root → TRA (vehicle movement base)
+    4. w_root → TRD (weapon root, differential)
+    5. v_turret / v_steer / v_hatch / v_door → RD (rotation differential)
+    6. w_bolt / w_trigger / w_safety / w_selector / w_charging /
+       w_magazine / w_hammer / w_sight → RD
+    7. w_aim* → RA (rotation absolute)
+    8. v_susp* → TA (translation absolute — suspension travel)
+    9. v_wheel* → TRD (wheels are full differential)
+    10. Everything else → TRD
+    """
+    lower = bone_name.lower()
+
+    # 1. Scene root
+    if lower in _TRG_BONES:
+        return 'TRG', True, "generateSceneRootMB"
+
+    # 2. Known absolute bones
+    if lower in _TRA_BONES:
+        return 'TRA', False, ""
+
+    # 3. Vehicle root
+    if lower == 'v_root':
+        return 'TRA', False, ""
+
+    # 4. RA prefixes (check before RD since w_aim could collide)
+    if any(lower.startswith(p) for p in _RA_PREFIXES):
+        return 'RA', False, ""
+
+    # 5. RD prefixes
+    if any(lower.startswith(p) for p in _RD_PREFIXES):
+        return 'RD', False, ""
+
+    # 6. TA prefixes
+    if any(lower.startswith(p) for p in _TA_PREFIXES):
+        return 'TA', False, ""
+
+    # 7. Default
+    return 'TRD', False, ""
+
+
+def _auto_set_movement_bone(settings):
+    """Auto-set the movement bone based on detected bone names."""
+    bone_names = {t.bone_name.lower() for t in settings.tracks}
+    if 'entityposition' in bone_names:
+        settings.movement_bone = 'EntityPosition'
+    elif 'v_root' in bone_names:
+        settings.movement_bone = 'v_root'
+    # Weapons typically have no movement bone — leave empty
+
+
 class ARPROFILE_OT_add_track(Operator):
     """Add a new track to the export profile"""
     bl_idname = "arprofile.add_track"
@@ -127,7 +203,7 @@ class ARPROFILE_OT_clear_parent(Operator):
 
 
 class ARPROFILE_OT_add_bones_from_armature(Operator):
-    """Add bones from selected armature to the profile"""
+    """Add bones from selected armature to the profile with auto-detected flags"""
     bl_idname = "arprofile.add_bones_from_armature"
     bl_label = "Add All Bones from Armature"
     bl_options = {'REGISTER', 'UNDO'}
@@ -149,15 +225,11 @@ class ARPROFILE_OT_add_bones_from_armature(Operator):
             track.bone_name = bone.name
             track.parent_bone = parent_name
 
-            # Set default flags based on bone name patterns
-            if bone.name.lower() in ['scene_root']:
-                track.flags = 'TRG'
+            flags, use_gen, gen_fn = _auto_detect_flags(bone.name)
+            track.flags = flags
+            if use_gen:
                 track.use_gen_fn = True
-                track.gen_fn_name = "generateSceneRootMB"
-            elif bone.name.lower() in ['entityposition', 'hips', 'collision']:
-                track.flags = 'TRA'
-            else:
-                track.flags = 'TRD'
+                track.gen_fn_name = gen_fn
 
             # Add children
             for child in bone.children:
@@ -170,6 +242,9 @@ class ARPROFILE_OT_add_bones_from_armature(Operator):
 
         # Update track count
         settings.track_count = len(settings.tracks)
+
+        # Auto-set movement bone
+        _auto_set_movement_bone(settings)
 
         self.report({'INFO'}, f"Added {len(settings.tracks)} bones from armature '{armature.name}'")
         return {'FINISHED'}
@@ -223,15 +298,11 @@ class ARPROFILE_OT_add_selected_bones(Operator):
                 else:
                     track.parent_bone = ""
 
-                # Set default flags based on bone name patterns
-                if bone_name.lower() in ['scene_root']:
-                    track.flags = 'TRG'
+                flags, use_gen, gen_fn = _auto_detect_flags(bone_name)
+                track.flags = flags
+                if use_gen:
                     track.use_gen_fn = True
-                    track.gen_fn_name = "generateSceneRootMB"
-                elif bone_name.lower() in ['entityposition', 'hips', 'collision']:
-                    track.flags = 'TRA'
-                else:
-                    track.flags = 'TRD'
+                    track.gen_fn_name = gen_fn
 
                 added_count += 1
 

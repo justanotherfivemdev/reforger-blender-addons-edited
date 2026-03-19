@@ -36,6 +36,12 @@ from .operators import (
     ARVEHICLES_OT_parent_empties,
     ARVEHICLES_OT_create_lods,
     ARVEHICLES_OT_center_vehicle,
+    ARVEHICLES_OT_sort_into_collections,
+    ARVEHICLES_OT_batch_collider_setup,
+    ARVEHICLES_OT_game_material_rename,
+    ARVEHICLES_OT_auto_center_of_mass,
+    ARVEHICLES_OT_create_occluder,
+    ARVEHICLES_OT_create_land_contacts,
 )
 
 from .ui import ARVEHICLES_PT_panel
@@ -65,6 +71,12 @@ classes = (
     ARVEHICLES_OT_create_lods,
     ARVEHICLES_OT_cleanup_mesh,
     ARVEHICLES_OT_center_vehicle,
+    ARVEHICLES_OT_sort_into_collections,
+    ARVEHICLES_OT_batch_collider_setup,
+    ARVEHICLES_OT_game_material_rename,
+    ARVEHICLES_OT_auto_center_of_mass,
+    ARVEHICLES_OT_create_occluder,
+    ARVEHICLES_OT_create_land_contacts,
     ARVEHICLES_PT_panel,
 )
 

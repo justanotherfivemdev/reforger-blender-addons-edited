@@ -38,3 +38,12 @@ from .misc import (
     ARVEHICLES_OT_create_lods,
     ARVEHICLES_OT_center_vehicle,
 )
+
+from .scene_tools import (
+    ARVEHICLES_OT_sort_into_collections,
+    ARVEHICLES_OT_batch_collider_setup,
+    ARVEHICLES_OT_game_material_rename,
+    ARVEHICLES_OT_auto_center_of_mass,
+    ARVEHICLES_OT_create_occluder,
+    ARVEHICLES_OT_create_land_contacts,
+)
