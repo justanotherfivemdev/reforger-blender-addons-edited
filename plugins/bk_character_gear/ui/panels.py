@@ -103,14 +103,14 @@ class CHARGEAR_PT_panel(bpy.types.Panel):
         col = box.column(align=True)
         col.operator("chargear.create_gear_lods", text="Create Gear LODs", icon='TRIA_DOWN_BAR')
         row = col.row(align=True)
-        op = row.operator("chargear.create_gear_lods", text="+ Shadow LOD", icon='SHADING_RENDERED')
+        op = row.operator("chargear.create_gear_lods", text="+ 1 LOD + Shadow", icon='SHADING_RENDERED')
         op.create_shadow_lod = True
         op.create_view_lod = False
-        op.lod_levels = 0
-        op = row.operator("chargear.create_gear_lods", text="+ View LOD", icon='HIDE_OFF')
+        op.lod_levels = 1
+        op = row.operator("chargear.create_gear_lods", text="+ 1 LOD + View", icon='HIDE_OFF')
         op.create_shadow_lod = False
         op.create_view_lod = True
-        op.lod_levels = 0
+        op.lod_levels = 1
 
         # ============================================================
         # COLLISION
