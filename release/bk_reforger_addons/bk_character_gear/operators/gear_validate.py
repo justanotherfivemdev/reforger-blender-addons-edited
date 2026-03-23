@@ -1,7 +1,7 @@
 import bpy
 import re
 
-from ..constants import CHARACTER_SKELETON_BONES, FACIAL_BONE_SET, WEIGHT_EPSILON
+from ..constants import CHARACTER_SKELETON_BONES, FACIAL_BONE_SET, WEIGHT_EPSILON, CHAR_TEMPLATE_PREFIX
 
 # ---------------------------------------------------------------------------
 # Re-use constants from the FBX exporter validators where available
@@ -66,9 +66,13 @@ def _is_collider(obj):
 
 
 def _check_armature(objects):
-    """Exactly one armature should be present."""
+    """
+    Exactly one armature should be present.
+    Template armatures (CHAR_TEMPLATE_ prefix) are excluded from this check.
+    """
     issues = []
-    armatures = [o for o in objects if o.type == 'ARMATURE']
+    armatures = [o for o in objects
+                 if o.type == 'ARMATURE' and not o.name.startswith(CHAR_TEMPLATE_PREFIX)]
     if not armatures:
         issues.append(('WARNING',
                        "No armature found — gear mesh will not animate correctly"))
@@ -89,7 +93,9 @@ def _check_facial_bone_skinning(objects):
     """
     issues = []
     for obj in objects:
-        if obj.type != 'MESH' or _is_collider(obj):
+        if (obj.type != 'MESH'
+                or _is_collider(obj)
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         bad = [vg.name for vg in obj.vertex_groups if vg.name in FACIAL_BONE_SET]
         if bad:
@@ -103,14 +109,33 @@ def _check_facial_bone_skinning(objects):
 
 
 def _check_bone_match(objects):
-    """All vertex groups on gear meshes should correspond to bones in the armature."""
+    """
+    All vertex groups on gear meshes should correspond to bones in the armature.
+
+    If a CHAR_TEMPLATE_ armature is present in the scene it is used as the
+    authoritative bone source (i.e. the actual BI skeleton), otherwise the
+    first non-template armature is used.
+    """
     issues = []
-    armature = next((o for o in objects if o.type == 'ARMATURE'), None)
+
+    # Prefer the template armature (actual BI skeleton) when available
+    template_arm = next(
+        (o for o in objects
+         if o.type == 'ARMATURE' and o.name.startswith(CHAR_TEMPLATE_PREFIX)),
+        None,
+    )
+    gear_arm = next(
+        (o for o in objects
+         if o.type == 'ARMATURE' and not o.name.startswith(CHAR_TEMPLATE_PREFIX)),
+        None,
+    )
+    armature = template_arm or gear_arm
     if armature is None:
         return issues
+
     bone_names = {b.name for b in armature.data.bones}
     for obj in objects:
-        if obj.type != 'MESH':
+        if obj.type != 'MESH' or obj.name.startswith(CHAR_TEMPLATE_PREFIX):
             continue
         orphaned = [vg.name for vg in obj.vertex_groups if vg.name not in bone_names]
         if orphaned:
@@ -125,7 +150,9 @@ def _check_weight_coverage(objects):
     """Warn if any vertex has zero total weight (causes mesh distortion)."""
     issues = []
     for obj in objects:
-        if obj.type != 'MESH' or not obj.vertex_groups or _is_collider(obj):
+        if (obj.type != 'MESH' or not obj.vertex_groups
+                or _is_collider(obj)
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         zero_verts = [v.index for v in obj.data.vertices
                       if sum(g.weight for g in v.groups) < WEIGHT_EPSILON]
@@ -140,7 +167,9 @@ def _check_max_influences(objects):
     """ERROR if any vertex has more than 4 bone influences (Enfusion engine limit)."""
     issues = []
     for obj in objects:
-        if obj.type != 'MESH' or not obj.vertex_groups or _is_collider(obj):
+        if (obj.type != 'MESH' or not obj.vertex_groups
+                or _is_collider(obj)
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         over = [v.index for v in obj.data.vertices if len(v.groups) > 4]
         if over:
@@ -158,7 +187,8 @@ def _check_modifier_stack(objects):
     """
     issues = []
     for obj in objects:
-        if obj.type != 'MESH' or _is_collider(obj) or not obj.vertex_groups:
+        if (obj.type != 'MESH' or _is_collider(obj) or not obj.vertex_groups
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         arm_mods = [m for m in obj.modifiers if m.type == 'ARMATURE']
         if not arm_mods:
@@ -181,7 +211,7 @@ def _check_lod_poly_counts(objects):
     lod_pattern = re.compile(r'^(.+?)_LOD(\d+)$', re.IGNORECASE)
     lod_groups: dict = {}
     for obj in objects:
-        if obj.type != 'MESH':
+        if obj.type != 'MESH' or obj.name.startswith(CHAR_TEMPLATE_PREFIX):
             continue
         m = lod_pattern.match(obj.name)
         if m:
@@ -211,7 +241,7 @@ def _check_gear_colliders(objects):
     """Gear colliders must have usage='Character' (BI Layer Preset requirement)."""
     issues = []
     for obj in objects:
-        if not _is_collider(obj):
+        if not _is_collider(obj) or obj.name.startswith(CHAR_TEMPLATE_PREFIX):
             continue
         usage = obj.get("usage") or obj.get("layer_preset")
         if not usage:
@@ -229,7 +259,8 @@ def _check_uv_maps(objects):
     """Render meshes must have at least one UV map; colliders are exempt."""
     issues = []
     for obj in objects:
-        if obj.type != 'MESH' or _is_collider(obj):
+        if (obj.type != 'MESH' or _is_collider(obj)
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         if not obj.data.uv_layers:
             issues.append(('ERROR',
@@ -242,7 +273,8 @@ def _check_scale(objects):
     """Warn if bounding box is unreasonably large (>3 m) or tiny (<0.01 m) for a gear item."""
     issues = []
     for obj in objects:
-        if obj.type != 'MESH' or _is_collider(obj):
+        if (obj.type != 'MESH' or _is_collider(obj)
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         dims = obj.dimensions
         max_dim = max(dims)
@@ -263,7 +295,8 @@ def _check_scale_applied(objects):
     """Warn if any object has unapplied scale (non-unit values)."""
     issues = []
     for obj in objects:
-        if obj.type not in ('MESH', 'ARMATURE'):
+        if (obj.type not in ('MESH', 'ARMATURE')
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         s = obj.scale
         if abs(s.x - 1.0) > 0.0001 or abs(s.y - 1.0) > 0.0001 or abs(s.z - 1.0) > 0.0001:
@@ -278,7 +311,8 @@ def _check_material_slots(objects):
     """Each render mesh should have at least one material assigned."""
     issues = []
     for obj in objects:
-        if obj.type != 'MESH' or _is_collider(obj):
+        if (obj.type != 'MESH' or _is_collider(obj)
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         if not obj.material_slots or all(ms.material is None for ms in obj.material_slots):
             issues.append(('WARNING',
@@ -291,7 +325,8 @@ def _check_triangulation(objects):
     """INFO if N-gons are present (BI recommends triangulated geometry for export)."""
     issues = []
     for obj in objects:
-        if obj.type != 'MESH' or _is_collider(obj):
+        if (obj.type != 'MESH' or _is_collider(obj)
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         ngons = [p for p in obj.data.polygons if len(p.vertices) > 4]
         if ngons:
@@ -307,7 +342,8 @@ def _check_name_convention(objects):
     bad_chars = re.compile(r'[^A-Za-z0-9_]')
     issues = []
     for obj in objects:
-        if obj.type not in ('MESH', 'ARMATURE'):
+        if (obj.type not in ('MESH', 'ARMATURE')
+                or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
         if bad_chars.search(obj.name):
             issues.append(('WARNING',

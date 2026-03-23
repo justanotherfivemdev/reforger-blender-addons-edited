@@ -8,3 +8,4 @@ from .gear_lods import CHARGEAR_OT_create_gear_lods
 from .gear_colliders import CHARGEAR_OT_create_gear_collider, CHARGEAR_OT_create_primitive_collider
 from .gear_validate import CHARGEAR_OT_validate_gear
 from .gear_pipeline import CHARGEAR_OT_full_pipeline
+from .load_template import CHARGEAR_OT_load_character_template, CHARGEAR_OT_remove_character_template

@@ -23,6 +23,8 @@ from .operators import (
     CHARGEAR_OT_create_primitive_collider,
     CHARGEAR_OT_validate_gear,
     CHARGEAR_OT_full_pipeline,
+    CHARGEAR_OT_load_character_template,
+    CHARGEAR_OT_remove_character_template,
 )
 
 from .ui import CHARGEAR_PT_panel
@@ -37,6 +39,8 @@ classes = (
     CHARGEAR_OT_create_primitive_collider,
     CHARGEAR_OT_validate_gear,
     CHARGEAR_OT_full_pipeline,
+    CHARGEAR_OT_load_character_template,
+    CHARGEAR_OT_remove_character_template,
     CHARGEAR_PT_panel,
 )
 
@@ -55,7 +59,12 @@ def register():
     )
     bpy.types.Scene.chargear_template_path = StringProperty(
         name="Template Path",
-        description="Optional path to reference skeleton FBX for alignment/weight transfer",
+        description=(
+            "Path to Character_Weights_Template.blend (from the official BI "
+            "SampleMod_NewCharacter package). Used to load the reference character "
+            "into the scene so you can visually check gear fit and validate "
+            "bone-name compatibility"
+        ),
         default="",
         subtype='FILE_PATH',
     )

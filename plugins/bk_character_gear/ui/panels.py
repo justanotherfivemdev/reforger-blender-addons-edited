@@ -1,6 +1,8 @@
 import bpy
 import re
 
+from ..constants import CHAR_TEMPLATE_PREFIX
+
 
 class CHARGEAR_PT_panel(bpy.types.Panel):
     bl_label = "BK Character Gear"
@@ -20,6 +22,42 @@ class CHARGEAR_PT_panel(bpy.types.Panel):
         box.label(text="Gear Type", icon='ARMATURE_DATA')
         box.prop(scene, "chargear_type", text="")
         box.prop(scene, "chargear_name", text="Name")
+
+        # ============================================================
+        # CHARACTER TEMPLATE
+        # ============================================================
+        box = layout.box()
+        box.label(text="Character Template", icon='OUTLINER_OB_ARMATURE')
+
+        # Path picker — pointed at the user's local .blend file
+        box.prop(scene, "chargear_template_path", text="", icon='FILE_BLEND')
+
+        row = box.row(align=True)
+        row.operator("chargear.load_character_template",
+                     text="Load Template",
+                     icon='IMPORT')
+        row.operator("chargear.remove_character_template",
+                     text="Remove",
+                     icon='X')
+
+        # Show a status line so the user knows the template is in the scene
+        template_objs = [o for o in scene.objects
+                         if o.name.startswith(CHAR_TEMPLATE_PREFIX)]
+        if template_objs:
+            # Count bones from the template armature if present
+            template_arm = next(
+                (o for o in template_objs if o.type == 'ARMATURE'), None
+            )
+            if template_arm:
+                bone_count = len(template_arm.data.bones)
+                box.label(
+                    text=f"Template loaded — {bone_count} bone(s)",
+                    icon='CHECKMARK'
+                )
+            else:
+                box.label(text="Template loaded (no armature)", icon='CHECKMARK')
+        else:
+            box.label(text="No template in scene", icon='INFO')
 
         # ============================================================
         # IMPORT

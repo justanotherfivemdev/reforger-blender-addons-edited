@@ -62,12 +62,12 @@ _BODY_BONES = [
     # Left leg — deform chain + twist helpers (10)
     "LeftUpLeg", "LeftUpLegRoll", "LeftUpLegRoll1", "LeftUpLegRoll2",
     "LeftLeg", "LeftLegRoll", "LeftLegRoll1",
-    "LeftFoot", "LeftToeBase", "LeftToe_End",
+    "LeftFoot", "LeftToeBase", "LeftToeEnd",
 
     # Right leg — deform chain + twist helpers (10)
     "RightUpLeg", "RightUpLegRoll", "RightUpLegRoll1", "RightUpLegRoll2",
     "RightLeg", "RightLegRoll", "RightLegRoll1",
-    "RightFoot", "RightToeBase", "RightToe_End",
+    "RightFoot", "RightToeBase", "RightToeEnd",
 
     # Equipment attachment / memory points (27)
     "WeaponHold_R", "WeaponHold_L",
@@ -217,8 +217,8 @@ GEAR_BONE_MAPPING = {
     'BOOTS': [
         "LeftLeg",   "LeftLegRoll",
         "RightLeg",  "RightLegRoll",
-        "LeftFoot",  "LeftToeBase",  "LeftToe_End",
-        "RightFoot", "RightToeBase", "RightToe_End",
+        "LeftFoot",  "LeftToeBase",  "LeftToeEnd",
+        "RightFoot", "RightToeBase", "RightToeEnd",
     ],
 
     # Full body gear uses all body bones but NEVER facial bones.
@@ -232,3 +232,13 @@ GEAR_BONE_MAPPING = {
 # ── Default LOD ratios for gear ────────────────────────────────────────────────
 # Less aggressive than vehicles; gear is seen close-up.
 GEAR_LOD_RATIOS = [0.5, 0.25, 0.12]
+
+# ── Character template reference ───────────────────────────────────────────────
+# The official BI reference file distributed with SampleMod_NewCharacter.
+# Users should browse for this file to enable template-based visualisation.
+# Actual bone names MUST match the armature inside this file exactly.
+CHARACTER_TEMPLATE_BLEND_NAME = "Character_Weights_Template.blend"
+
+# Prefix used to tag all objects appended from the character template.
+# Used to identify and remove them cleanly.
+CHAR_TEMPLATE_PREFIX = "CHAR_TEMPLATE_"
