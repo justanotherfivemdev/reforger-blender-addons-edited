@@ -12,6 +12,8 @@ from .nla import (
     ARMA_OT_clear_search,
     ARMA_OT_export_action_list,
     ARMA_OT_cleanup_export_duplicates,
+    ARMA_OT_copy_bone_location,
+    ARMA_OT_paste_bone_location,
 )
 
 classes = (
@@ -26,4 +28,6 @@ classes = (
     ARMA_OT_delete_action,
     ARMA_OT_export_action_list,
     ARMA_OT_cleanup_export_duplicates,
+    ARMA_OT_copy_bone_location,
+    ARMA_OT_paste_bone_location,
 )

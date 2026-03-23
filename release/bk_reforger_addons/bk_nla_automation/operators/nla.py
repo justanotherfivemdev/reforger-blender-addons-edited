@@ -479,3 +479,69 @@ class ARMA_OT_cleanup_export_duplicates(Operator):
         refresh_switcher(context.scene, context)
         self.report({'INFO'}, f"Removed {len(to_remove)} duplicate action(s)")
         return {'FINISHED'}
+
+
+class ARMA_OT_copy_bone_location(Operator):
+    bl_idname = "arma.copy_bone_location"
+    bl_label = "Copy"
+    bl_description = "Copy location from the active pose bone"
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_pose_bone is not None
+
+    def execute(self, context):
+        props = context.scene.arma_nla_props
+        bone = context.active_pose_bone
+        props.loc_stored = bone.location
+        props.loc_source_name = bone.name
+
+        axes = []
+        if props.loc_copy_x:
+            axes.append(f"X:{bone.location.x:.3f}")
+        if props.loc_copy_y:
+            axes.append(f"Y:{bone.location.y:.3f}")
+        if props.loc_copy_z:
+            axes.append(f"Z:{bone.location.z:.3f}")
+        self.report({'INFO'}, f"Copied {', '.join(axes)} from {bone.name}")
+        return {'FINISHED'}
+
+
+class ARMA_OT_paste_bone_location(Operator):
+    bl_idname = "arma.paste_bone_location"
+    bl_label = "Paste"
+    bl_description = "Paste stored location to the active pose bone (selected axes only)"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.arma_nla_props
+        return (context.active_pose_bone is not None
+                and props.loc_source_name != "")
+
+    def execute(self, context):
+        props = context.scene.arma_nla_props
+        bone = context.active_pose_bone
+
+        if not any((props.loc_copy_x, props.loc_copy_y, props.loc_copy_z)):
+            self.report({'WARNING'}, "No axes selected")
+            return {'CANCELLED'}
+
+        loc = bone.location.copy()
+        axes = []
+        if props.loc_copy_x:
+            loc.x = props.loc_stored[0]
+            axes.append("X")
+        if props.loc_copy_y:
+            loc.y = props.loc_stored[1]
+            axes.append("Y")
+        if props.loc_copy_z:
+            loc.z = props.loc_stored[2]
+            axes.append("Z")
+        bone.location = loc
+
+        if context.scene.tool_settings.use_keyframe_insert_auto:
+            bone.keyframe_insert(data_path="location")
+
+        self.report({'INFO'}, f"Pasted {', '.join(axes)} to {bone.name}")
+        return {'FINISHED'}

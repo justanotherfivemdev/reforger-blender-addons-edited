@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
-from bpy.props import StringProperty, BoolProperty, CollectionProperty, EnumProperty
+from bpy.props import (
+    StringProperty, BoolProperty, CollectionProperty,
+    EnumProperty, FloatVectorProperty,
+)
 from bpy.types import PropertyGroup
 
 from .utils import refresh_switcher, do_switch_animation
@@ -77,6 +80,13 @@ class ArmaReforgerNLAProperties(PropertyGroup):
         default=-1,
         update=lambda self, context: _on_switcher_index_changed(self, context)
     )
+
+    # Location copy/paste for quick bone positioning between strips
+    loc_stored: FloatVectorProperty(name="Stored Location", size=3)
+    loc_source_name: StringProperty(name="Source", default="")
+    loc_copy_x: BoolProperty(name="X", default=True)
+    loc_copy_y: BoolProperty(name="Y", default=True)
+    loc_copy_z: BoolProperty(name="Z", default=True)
 
 
 classes = (
