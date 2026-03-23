@@ -33,6 +33,7 @@ You can enable or disable individual plugins from the addon preferences. Go to *
 | **BK Asset Exporter** | FBX export tailored for Enfusion Engine |
 | **BK Selective Location Copy** | Copy specific X/Y/Z location components between objects or bones |
 | **BK Weight Gradient** | Apply weight gradients between anchor vertices with selectable curves |
+| **BK Character Gear** | Automate the clothing/gear import pipeline for Arma Reforger characters |
 
 ### Standalone (not included in the all-in-one)
 
@@ -287,6 +288,49 @@ Set 2 to 10 anchor points along your mesh. The first and last anchors define the
 #### Custom Curve Editor
 
 When using Custom Curve mode, click the **Curve Editor** arrow to expand the graphical editor. Use the 9 built-in presets (Linear, Ease In/Out, S-Curve, Bell, Valley, Steps, Sharp In/Out) or draw your own. In this mode the curve Y value directly equals the output weight.
+
+---
+
+### BK Character Gear
+
+**Location:** 3D Viewport > Sidebar > BK Character Gear
+
+Automates the Arma Reforger clothing and gear import pipeline, guiding novice modelers through every step from import to export-ready asset.
+
+#### Gear Types
+
+Headgear, Face, Neck, Torso, Arms, Hands, Legs, Feet, and more. Set the **Gear Type** and an asset **Name** at the top of the panel before running any step.
+
+#### Character Template
+
+Load an official BI skeleton `.blend` file (e.g. `SampleMod_NewCharacter`) as the in-scene reference armature. The status line shows the number of bones loaded. Use **Remove** to clear it from the scene.
+
+#### Pipeline Steps
+
+| Step | Button | Description |
+|------|--------|-------------|
+| 1 | **Import Gear FBX** | Import the gear mesh and rename it according to gear type/name |
+| 2 | **Bind to Skeleton** | Parent the gear mesh to the loaded character armature |
+| 3 | **Transfer Weights** | Copy vertex weights from the reference character mesh |
+| 4 | **Migrate Facial Weights → Head** | Update old facial weights to the BI Oct 2024 head bone (use after a skeleton update) |
+| 5 | **Create Gear LODs** | Generate decimated LOD meshes |
+| 6 | **Trimesh (UTM_)** | Create a trimesh collision mesh with the `UTM_` prefix |
+| 7 | **Primitive (UBX_)** | Create a bounding-box collision mesh with the `UBX_` prefix |
+| 8 | **Validate Gear** | Check the asset for common issues before export |
+
+#### One-Click Pipeline
+
+Click **Full Gear Pipeline** to run all steps automatically in sequence using the current Gear Type and Name settings.
+
+#### Workflow
+
+1. Set the **Gear Type** and **Name**.
+2. Point **Character Template** at your BI character skeleton `.blend` and click **Load Template**.
+3. Click **Import Gear FBX** and select your gear file.
+4. Click **Bind to Skeleton**, then **Transfer Weights**.
+5. Run **Create Gear LODs** and choose a collision type.
+6. Click **Validate Gear** to confirm everything is ready.
+7. Export with BK Asset Exporter or Blender's built-in FBX export.
 
 ---
 
