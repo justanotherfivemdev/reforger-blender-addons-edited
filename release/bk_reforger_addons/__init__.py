@@ -22,6 +22,7 @@ _submodule_info = {
     "bk_fbx_exporter":            ("BK Asset Exporter",          True),
     "bk_selective_location_copy": ("BK Selective Location Copy",  True),
     "bk_weight_gradient":         ("BK Weight Gradient",          True),
+    "bk_character_gear":          ("BK Character Gear",           True),
 }
 
 _modules = {}   # name -> module
@@ -105,6 +106,11 @@ class BKReforgerPreferences(AddonPreferences):
         name="BK Weight Gradient",
         default=True,
         update=_make_update("bk_weight_gradient"),
+    )
+    bk_character_gear: BoolProperty(
+        name="BK Character Gear",
+        default=True,
+        update=_make_update("bk_character_gear"),
     )
 
     def draw(self, context):
