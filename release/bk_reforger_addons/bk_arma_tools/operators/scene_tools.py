@@ -49,11 +49,6 @@ class ARVEHICLES_OT_sort_into_collections(bpy.types.Operator):
         default=True,
         description="Hide all collections except LOD0"
     )
-    fold_collections: bpy.props.BoolProperty(
-        name="Fold Collections",
-        default=True,
-        description="Collapse sorted collections in outliner"
-    )
 
     @classmethod
     def poll(cls, context):
@@ -70,9 +65,9 @@ class ARVEHICLES_OT_sort_into_collections(bpy.types.Operator):
             name_upper = name.upper()
             target_col_name = None
 
-            # Check prefix map first
+            # Check prefix map first (case-insensitive)
             for prefix, col_name in _PREFIX_COLLECTION_MAP.items():
-                if name.startswith(prefix):
+                if name_upper.startswith(prefix):
                     target_col_name = col_name
                     break
 
@@ -98,12 +93,6 @@ class ARVEHICLES_OT_sort_into_collections(bpy.types.Operator):
                     layer_col = self._find_layer_collection(context.view_layer.layer_collection, col.name)
                     if layer_col:
                         layer_col.hide_viewport = True
-
-        if self.fold_collections:
-            for col in bpy.data.collections:
-                layer_col = self._find_layer_collection(context.view_layer.layer_collection, col.name)
-                if layer_col:
-                    layer_col.collection.hide_viewport = False  # keep data visible
 
         self.report({'INFO'}, f"Sorted {sorted_count} objects into collections")
         return {'FINISHED'}
@@ -303,9 +292,7 @@ class ARVEHICLES_OT_auto_center_of_mass(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(
-            obj for obj in context.selected_objects if obj.type == 'MESH'
-        )
+        return any(obj.type == 'MESH' for obj in context.selected_objects)
 
     def execute(self, context):
         mesh_objects = [obj for obj in context.selected_objects if obj.type == 'MESH']
@@ -507,9 +494,7 @@ class ARVEHICLES_OT_create_land_contacts(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(
-            obj for obj in context.selected_objects if obj.type == 'MESH'
-        )
+        return any(obj.type == 'MESH' for obj in context.selected_objects)
 
     def execute(self, context):
         mesh_objects = [obj for obj in context.selected_objects if obj.type == 'MESH']

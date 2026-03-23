@@ -49,6 +49,7 @@ from .ui import ARVEHICLES_PT_panel
 classes = (
     ARVEHICLES_OT_manage_presets,
     ARVEHICLES_OT_preset_separation,
+    ARVEHICLES_OT_reset_preset,
     ARVEHICLES_OT_create_ucx_collision,
     ARVEHICLES_OT_create_firegeo_collision,
     ARVEHICLES_OT_create_wheel_collisions,

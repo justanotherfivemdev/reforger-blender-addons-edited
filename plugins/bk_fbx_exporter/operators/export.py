@@ -355,9 +355,9 @@ class ExportArmaReforgerAsset(bpy.types.Operator, ExportHelper):
                 print(f"Applying custom rotation: X={self.custom_rotation_x}, Y={self.custom_rotation_y}, Z={self.custom_rotation_z}")
                 obj.rotation_mode = 'XYZ'
                 obj.rotation_euler = (
-                    math.radians(self.custom_rotation_x),
-                    math.radians(self.custom_rotation_y),
-                    math.radians(self.custom_rotation_z)
+                    self.custom_rotation_x,
+                    self.custom_rotation_y,
+                    self.custom_rotation_z,
                 )
                 # Apply transformation to make it permanent
                 self.apply_object_transform(obj, apply_rotation=True)
@@ -391,9 +391,9 @@ class ExportArmaReforgerAsset(bpy.types.Operator, ExportHelper):
             if axis == 'CUSTOM':
                 # Custom rotation - create rotation matrix from Euler angles
                 rot_mat = mathutils.Euler((
-                    math.radians(self.custom_rotation_x),
-                    math.radians(self.custom_rotation_y),
-                    math.radians(self.custom_rotation_z)
+                    self.custom_rotation_x,
+                    self.custom_rotation_y,
+                    self.custom_rotation_z,
                 )).to_matrix().to_4x4()
 
                 # Store current location

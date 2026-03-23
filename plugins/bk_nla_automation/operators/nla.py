@@ -10,6 +10,7 @@ from ..utils import (
     get_type_prefix,
     generate_new_action_name,
     get_exclude_patterns,
+    get_include_patterns,
     refresh_switcher,
     do_switch_animation,
 )
@@ -412,7 +413,9 @@ class ARMA_OT_export_action_list(Operator):
 
         filepath = bpy.path.abspath(self.filepath)
         try:
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            dirpath = os.path.dirname(filepath)
+            if dirpath:
+                os.makedirs(dirpath, exist_ok=True)
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(lines) + '\n')
         except OSError as e:

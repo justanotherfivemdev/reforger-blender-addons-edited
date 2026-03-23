@@ -459,7 +459,7 @@ class ARBUILDINGS_OT_separate_component(bpy.types.Operator):
         
         # Parent to the original component, keeping world transform
         firegeo_obj.parent = obj
-        firegeo_obj.matrix_world = original_matrix_world
+        firegeo_obj.matrix_parent_inverse = obj.matrix_world.inverted()
         
         return firegeo_obj
     
