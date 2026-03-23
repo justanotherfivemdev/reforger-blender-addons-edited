@@ -63,8 +63,19 @@ class ARMA_OT_select_all_actions(Operator):
 class ARMA_OT_process_nla(Operator):
     bl_idname = "arma.process_nla"
     bl_label = "Process NLA"
-    bl_description = "Convert selected actions to NLA strips and create new editable actions"
+    bl_description = "Convert selected actions to NLA strips and create new editable actions (requires Pose Mode)"
     bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        armature = get_armature(context)
+        if not armature:
+            cls.poll_message_set("No armature found")
+            return False
+        if context.mode != 'POSE':
+            cls.poll_message_set("Switch to Pose Mode first")
+            return False
+        return True
 
     def execute(self, context):
         scene = context.scene
