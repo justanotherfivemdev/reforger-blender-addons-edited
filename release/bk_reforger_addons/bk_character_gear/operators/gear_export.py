@@ -15,8 +15,8 @@ class CHARGEAR_OT_export_gear(bpy.types.Operator):
     filter_glob: StringProperty(default="*.fbx", options={'HIDDEN'})
 
     apply_transforms: BoolProperty(
-        name="Apply Transforms",
-        description="Apply all transforms before export",
+        name="Apply Rotation & Scale",
+        description="Apply object rotation and scale before export (location is not applied)",
         default=True,
     )
 
