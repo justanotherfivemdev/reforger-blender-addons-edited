@@ -7,6 +7,7 @@ import bpy
 import bmesh
 from bpy.types import Operator
 from bpy.props import IntProperty
+from mathutils import Vector
 
 from ..curve_utils import _ensure_curve_mapping
 from ..utils import _get_selected_verts, _ensure_anchors, _paint_anchor_verts, _build_stops, _parse_indices
@@ -170,12 +171,28 @@ class MESH_OT_wg_apply_gradient(Operator):
                 self.report({'WARNING'}, "No vertices selected")
                 return {'CANCELLED'}
 
-            coords = [(obj.matrix_world @ v.co)[axis_idx] * sign for v in sel_verts]
+            use_local = props.gradient_space == 'LOCAL'
+            if use_local:
+                coords = [v.co[axis_idx] * sign for v in sel_verts]
+            else:
+                coords = [(obj.matrix_world @ v.co)[axis_idx] * sign for v in sel_verts]
 
             # Anchor positions (when set) define the gradient range ends;
             # fall back to selection min/max when not set.
-            min_c = a0.co[axis_idx] * sign if (a0 and a0.is_set) else min(coords)
-            max_c = a1.co[axis_idx] * sign if (a1 and a1.is_set) else max(coords)
+            if a0 and a0.is_set:
+                if use_local:
+                    min_c = (obj.matrix_world.inverted() @ Vector(a0.co))[axis_idx] * sign
+                else:
+                    min_c = a0.co[axis_idx] * sign
+            else:
+                min_c = min(coords)
+            if a1 and a1.is_set:
+                if use_local:
+                    max_c = (obj.matrix_world.inverted() @ Vector(a1.co))[axis_idx] * sign
+                else:
+                    max_c = a1.co[axis_idx] * sign
+            else:
+                max_c = max(coords)
             span = max_c - min_c
 
             # Anchor vertices are pinned to their anchor weight (same as ANCHORS mode).

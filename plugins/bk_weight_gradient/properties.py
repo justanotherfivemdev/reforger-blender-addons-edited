@@ -67,12 +67,11 @@ def _on_mirror_toggle(props, context):
 
 
 def _on_curve_mode_update(self, context):
-    """When switching to Curve Graph, ensure the brush exists and expand the editor."""
+    """When switching to Curve Graph, ensure the brush exists."""
     if self.curve_mode == 'CURVE_GRAPH':
         from . import curve_utils
         if not bpy.data.brushes.get(curve_utils._WG_BRUSH_NAME):
             curve_utils._ensure_curve_mapping()
-        self.show_curve_editor = True
 
 
 def _on_segments_update(self, context):
@@ -204,6 +203,15 @@ class WeightGradientProperties(PropertyGroup):
         default='Z',
     )
 
+    gradient_space: EnumProperty(
+        name="Space",
+        items=[
+            ('WORLD', "World", "Use world-space axis direction"),
+            ('LOCAL', "Local", "Use the object's local axis direction"),
+        ],
+        default='WORLD',
+    )
+
     curve_mode: EnumProperty(
         name="Mode",
         items=[
@@ -231,12 +239,6 @@ class WeightGradientProperties(PropertyGroup):
             "Add random variation to the gradient — jitters each vertex's "
             "position along the gradient before sampling the weight"
         ),
-    )
-
-    show_curve_editor: BoolProperty(
-        name="Show Curve Editor",
-        default=True,
-        description="Expand the custom curve editor panel",
     )
 
     curve_symmetry: BoolProperty(
@@ -274,15 +276,11 @@ class WeightGradientProperties(PropertyGroup):
 
     saved_anchor_groups: CollectionProperty(type=WG_AnchorGroup)
     active_anchor_group_index: IntProperty(name="Active Group", default=0)
-    show_saved_anchors: BoolProperty(name="Saved Anchors", default=True)
-
     saved_anchor_sets: CollectionProperty(type=WG_SavedAnchorSet)
     active_anchor_set_index: IntProperty(name="Active Anchor Set", default=0)
 
     saved_selection_groups: CollectionProperty(type=WG_AnchorGroup)
     active_selection_group_index: IntProperty(name="Active Selection Group", default=0)
-    show_saved_selections: BoolProperty(name="Saved Gradient Vertices", default=True)
-
     saved_selections: CollectionProperty(type=WG_SavedSelection)
     active_selection_index: IntProperty(name="Active Selection", default=0)
 
@@ -310,10 +308,7 @@ class WeightGradientProperties(PropertyGroup):
     # Settings presets
     saved_full_presets: CollectionProperty(type=WG_FullPreset)
     active_full_preset_index: IntProperty(name="Active Preset", default=0)
-    show_full_presets: BoolProperty(name="Settings Presets", default=False)
-
     # Adjust weights
-    show_adjust: BoolProperty(name="Adjust Weights", default=False)
     weight_adjust: FloatProperty(
         name="Adjust",
         default=0.0, min=-1.0, max=1.0,

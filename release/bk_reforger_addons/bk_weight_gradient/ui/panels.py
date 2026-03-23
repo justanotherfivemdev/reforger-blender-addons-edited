@@ -107,7 +107,34 @@ class WG_UL_full_presets(bpy.types.UIList):
 
 
 # ---------------------------------------------------------------------------
-# Main panel
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _poll_mesh(cls, context):
+    return (context.active_object is not None
+            and context.active_object.type == 'MESH')
+
+
+def _draw_anchor_row(layout, anchor, index):
+    """Draw a single anchor row: [Set Anchor N] [status] [select btn] + weight slider."""
+    box = layout.box()
+    row = box.row(align=True)
+    op = row.operator("mesh.wg_set_anchor", text=f"Set Anchor {index + 1}",
+                      icon='VERTEXSEL')
+    op.index = index
+    if anchor.is_set:
+        n = anchor.vert_count
+        row.label(text=f"{n} vert{'s' if n > 1 else ''}", icon='CHECKMARK')
+        sel = row.operator("mesh.wg_select_anchor_verts", text="",
+                           icon='RESTRICT_SELECT_OFF')
+        sel.index = index
+    else:
+        row.label(text="Not set", icon='X')
+    box.prop(anchor, "weight", slider=True)
+
+
+# ---------------------------------------------------------------------------
+# Main panel — Source + Anchors + Group + Apply
 # ---------------------------------------------------------------------------
 
 class VIEW3D_PT_weight_gradient(Panel):
@@ -117,10 +144,7 @@ class VIEW3D_PT_weight_gradient(Panel):
     bl_region_type = 'UI'
     bl_category = "BK Weight Gradient"
 
-    @classmethod
-    def poll(cls, context):
-        return (context.active_object is not None
-                and context.active_object.type == 'MESH')
+    poll = classmethod(_poll_mesh)
 
     def draw(self, context):
         layout = self.layout
@@ -137,41 +161,23 @@ class VIEW3D_PT_weight_gradient(Panel):
             row = box_axis.row(align=True)
             row.label(text="Axis:")
             row.prop(props, "gradient_axis", expand=True)
+
+            row = box_axis.row(align=True)
+            row.label(text="Space:")
+            row.prop(props, "gradient_space", expand=True)
+
+            # Anchors are optional in axis mode — they clamp the range
             _ensure_anchors(props)
+            header = layout.row(align=True)
+            header.label(text="Range Anchors (optional):", icon='ANCHOR_CENTER')
             for i, a in enumerate(props.anchors[:2]):
-                box = layout.box()
-                row = box.row(align=True)
-                op = row.operator("mesh.wg_set_anchor", text=f"Set Anchor {i + 1}",
-                                  icon='VERTEXSEL')
-                op.index = i
-                if a.is_set:
-                    n = a.vert_count
-                    row.label(text=f"{n} vert{'s' if n > 1 else ''}", icon='CHECKMARK')
-                    sel = row.operator("mesh.wg_select_anchor_verts", text="",
-                                       icon='RESTRICT_SELECT_OFF')
-                    sel.index = i
-                else:
-                    row.label(text="Not set", icon='X')
-                box.prop(a, "weight", slider=True)
+                _draw_anchor_row(layout, a, i)
 
         else:  # ANCHORS
             layout.prop(props, "anchor_count")
+            _ensure_anchors(props)
             for i, a in enumerate(props.anchors):
-                box = layout.box()
-                row = box.row(align=True)
-                label = i + 1
-                op = row.operator("mesh.wg_set_anchor", text=f"Set Anchor {label}",
-                                  icon='VERTEXSEL')
-                op.index = i
-                if a.is_set:
-                    n = a.vert_count
-                    row.label(text=f"{n} vert{'s' if n > 1 else ''}", icon='CHECKMARK')
-                    sel = row.operator("mesh.wg_select_anchor_verts", text="",
-                                       icon='RESTRICT_SELECT_OFF')
-                    sel.index = i
-                else:
-                    row.label(text="Not set", icon='X')
-                box.prop(a, "weight", slider=True)
+                _draw_anchor_row(layout, a, i)
 
         layout.separator()
 
@@ -181,108 +187,10 @@ class VIEW3D_PT_weight_gradient(Panel):
         else:
             layout.label(text="No vertex groups", icon='ERROR')
 
-        # -- Curve & Control Points -----------------------------------------
-        box_curve = layout.box()
-
-        row = box_curve.row(align=True)
-        row.prop(props, "curve_mode", expand=True)
-
-        if props.curve_mode == 'SIMPLE':
-            row = box_curve.row(align=True)
-            if props.curve_symmetry:
-                row.prop(props, "simple_start", slider=True, text="Peak")
-                row.prop(props, "simple_end", slider=True, text="Edge")
-            else:
-                row.prop(props, "simple_start", slider=True)
-                row.prop(props, "simple_end", slider=True)
-            row = box_curve.row(align=True)
-            row.prop(props, "simple_shape", slider=True)
-            row.prop(props, "curve_symmetry", text="", icon='MOD_MIRROR', toggle=True)
-
-        elif props.curve_mode == 'CURVE_GRAPH':
-            row = box_curve.row(align=True)
-            icon = 'TRIA_DOWN' if props.show_curve_editor else 'TRIA_RIGHT'
-            row.prop(props, "show_curve_editor", text="Curve Editor",
-                     icon=icon, emboss=False)
-            row.prop(props, "curve_symmetry", text="", icon='MOD_MIRROR', toggle=True)
-
-            if props.show_curve_editor:
-                brush = _get_curve_mapping()
-                if brush:
-                    box_curve.label(text="X = position (A\u2192B)   Y = weight value", icon='INFO')
-                    box_curve.template_curve_mapping(brush, "curve")
-                    box_curve.operator("mesh.wg_init_curve_from_anchors", icon='ANCHOR_CENTER')
-                else:
-                    box_curve.label(text="Apply a preset to initialise the curve", icon='INFO')
-
-            sub_box = box_curve.box()
-            sub_box.label(text="Presets:")
-            row = sub_box.row(align=True)
-            for key in ('LINEAR', 'EASE_IN', 'EASE_OUT', 'S_CURVE'):
-                op = row.operator("mesh.wg_curve_preset", text=key.replace('_', ' ').title())
-                op.preset = key
-            row = sub_box.row(align=True)
-            for key in ('BELL', 'VALLEY', 'STEPS_3', 'SHARP_IN', 'SHARP_OUT'):
-                op = row.operator("mesh.wg_curve_preset", text=key.replace('_', ' ').title())
-                op.preset = key
-
-            sub_box = box_curve.box()
-            row = sub_box.row(align=True)
-            row.label(text="Saved Curves", icon='CURVE_DATA')
-            sub_box.template_list(
-                "WG_UL_saved_curves", "",
-                props, "saved_curves",
-                props, "active_curve_index",
-                rows=2, maxrows=5,
-            )
-            row = sub_box.row(align=True)
-            row.operator("mesh.wg_save_curve", text="Save", icon='ADD')
-            sub = row.row(align=True)
-            sub.enabled = len(props.saved_curves) > 0
-            op = sub.operator("mesh.wg_load_curve", text="Load", icon='CHECKMARK')
-            op.index = props.active_curve_index
-
-        else:  # CONTROL_POINTS
-            row = box_curve.row(align=True)
-            row.prop(props, "segments")
-            row.operator("mesh.wg_sync_points", text="", icon='FILE_REFRESH')
-            row.operator("mesh.wg_reset_cp", text="", icon='LOOP_BACK')
-            n_segs = props.segments
-            n_pts = len(props.control_points)
-            if n_pts >= 2:
-                row.prop(props, "mirror", text="", icon='MOD_MIRROR', toggle=True)
-
-            if n_pts != n_segs:
-                box_curve.label(text=f"Out of sync ({n_pts}/{n_segs}) — hit refresh", icon='ERROR')
-
-            if n_pts > 0:
-                n_total = n_pts + 1
-                mirroring = props.mirror and n_pts >= 2
-                for i, cp in enumerate(props.control_points):
-                    pct = int(round((i + 1) / n_total * 100))
-                    mirror_idx = n_pts - 1 - i
-                    is_middle = (mirror_idx == i)
-                    is_mirrored_slave = mirroring and i > mirror_idx
-
-                    r = box_curve.row(align=True)
-                    if mirroring and not is_middle and not is_mirrored_slave:
-                        pct2 = int(round((mirror_idx + 1) / n_total * 100))
-                        r.label(text="", icon='LINKED')
-                        r.prop(cp, "weight", slider=True, text=f"{pct}% + {pct2}%")
-                    elif is_mirrored_slave:
-                        r.enabled = False
-                        r.label(text="", icon='LINKED')
-                        r.prop(cp, "weight", slider=True, text=f"{pct}%")
-                    elif mirroring and is_middle:
-                        r.label(text="", icon='DECORATE')
-                        r.prop(cp, "weight", slider=True, text=f"{pct}% (mid)")
-                    else:
-                        r.prop(cp, "weight", slider=True, text=f"{pct}%")
-
         # -- Offset + Noise -------------------------------------------------
-        box_power = layout.box()
-        box_power.prop(props, "weight_offset", slider=True)
-        box_power.prop(props, "gradient_noise", slider=True)
+        row = layout.row(align=True)
+        row.prop(props, "weight_offset", slider=True)
+        row.prop(props, "gradient_noise", slider=True)
 
         layout.separator()
 
@@ -297,130 +205,254 @@ class VIEW3D_PT_weight_gradient(Panel):
 
         layout.operator("mesh.wg_clear_anchors", icon='TRASH')
 
-        # -- Saved Anchor Sets ----------------------------------------------
-        layout.separator()
-        box = layout.box()
-        row = box.row(align=True)
-        icon = 'TRIA_DOWN' if props.show_saved_anchors else 'TRIA_RIGHT'
-        row.prop(props, "show_saved_anchors", text="Saved Anchors",
-                 icon=icon, emboss=False)
 
-        if props.show_saved_anchors:
-            grp_box = box.box()
-            row = grp_box.row(align=True)
-            row.label(text="Groups:", icon='FILE_FOLDER')
-            row.operator("mesh.wg_add_anchor_group", text="", icon='ADD')
-            grp_box.template_list(
-                "WG_UL_anchor_groups", "",
-                props, "saved_anchor_groups",
-                props, "active_anchor_group_index",
-                rows=2, maxrows=4,
-            )
+# ---------------------------------------------------------------------------
+# Curve Settings sub-panel
+# ---------------------------------------------------------------------------
 
-            n_groups = len(props.saved_anchor_groups)
-            if n_groups > 0 and 0 <= props.active_anchor_group_index < n_groups:
-                active_grp = props.saved_anchor_groups[props.active_anchor_group_index].name
-                box.label(text=f"In '{active_grp}':", icon='FILTER')
+class VIEW3D_PT_wg_curve(Panel):
+    bl_label = "Curve Settings"
+    bl_idname = "VIEW3D_PT_wg_curve"
+    bl_parent_id = "VIEW3D_PT_weight_gradient"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "BK Weight Gradient"
+
+    poll = classmethod(_poll_mesh)
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.weight_gradient
+
+        row = layout.row(align=True)
+        row.prop(props, "curve_mode", expand=True)
+
+        if props.curve_mode == 'SIMPLE':
+            row = layout.row(align=True)
+            if props.curve_symmetry:
+                row.prop(props, "simple_start", slider=True, text="Peak")
+                row.prop(props, "simple_end", slider=True, text="Edge")
             else:
-                box.label(text="All anchor sets:")
-                n_groups = 0
+                row.prop(props, "simple_start", slider=True)
+                row.prop(props, "simple_end", slider=True)
+            row = layout.row(align=True)
+            row.prop(props, "simple_shape", slider=True)
+            row.prop(props, "curve_symmetry", text="", icon='MOD_MIRROR', toggle=True)
 
-            box.template_list(
-                "WG_UL_saved_anchor_sets", "",
-                props, "saved_anchor_sets",
-                props, "active_anchor_set_index",
+        elif props.curve_mode == 'CURVE_GRAPH':
+            row = layout.row(align=True)
+            row.prop(props, "curve_symmetry", text="Symmetric", icon='MOD_MIRROR', toggle=True)
+
+            brush = _get_curve_mapping()
+            if brush:
+                layout.label(text="X = position (A\u2192B)   Y = weight value", icon='INFO')
+                layout.template_curve_mapping(brush, "curve")
+                layout.operator("mesh.wg_init_curve_from_anchors", icon='ANCHOR_CENTER')
+            else:
+                layout.label(text="Apply a preset to initialise the curve", icon='INFO')
+
+            row = layout.row(align=True)
+            for key in ('LINEAR', 'EASE_IN', 'EASE_OUT', 'S_CURVE'):
+                op = row.operator("mesh.wg_curve_preset", text=key.replace('_', ' ').title())
+                op.preset = key
+            row = layout.row(align=True)
+            for key in ('BELL', 'VALLEY', 'STEPS_3', 'SHARP_IN', 'SHARP_OUT'):
+                op = row.operator("mesh.wg_curve_preset", text=key.replace('_', ' ').title())
+                op.preset = key
+
+            # Saved curves
+            layout.separator()
+            layout.label(text="Saved Curves:", icon='CURVE_DATA')
+            layout.template_list(
+                "WG_UL_saved_curves", "",
+                props, "saved_curves",
+                props, "active_curve_index",
                 rows=2, maxrows=5,
             )
-
-            row = box.row(align=True)
-            row.operator("mesh.wg_save_anchor_set", text="Save", icon='ADD')
+            row = layout.row(align=True)
+            row.operator("mesh.wg_save_curve", text="Save", icon='ADD')
             sub = row.row(align=True)
-            sub.enabled = len(props.saved_anchor_sets) > 0
-            op = sub.operator("mesh.wg_load_anchor_set", text="Load", icon='CHECKMARK')
-            op.index = props.active_anchor_set_index
-            sub2 = row.row(align=True)
-            sub2.enabled = (len(props.saved_anchor_sets) > 0 and n_groups > 0)
-            op2 = sub2.operator("mesh.wg_assign_to_group", text="Assign", icon='LINK_BLEND')
-            op2.set_index = props.active_anchor_set_index
+            sub.enabled = len(props.saved_curves) > 0
+            op = sub.operator("mesh.wg_load_curve", text="Load", icon='CHECKMARK')
+            op.index = props.active_curve_index
+
+        else:  # CONTROL_POINTS
+            row = layout.row(align=True)
+            row.prop(props, "segments")
+            row.operator("mesh.wg_sync_points", text="", icon='FILE_REFRESH')
+            row.operator("mesh.wg_reset_cp", text="", icon='LOOP_BACK')
+            n_segs = props.segments
+            n_pts = len(props.control_points)
+            if n_pts >= 2:
+                row.prop(props, "mirror", text="", icon='MOD_MIRROR', toggle=True)
+
+            if n_pts != n_segs:
+                layout.label(text=f"Out of sync ({n_pts}/{n_segs}) — hit refresh", icon='ERROR')
+
+            if n_pts > 0:
+                n_total = n_pts + 1
+                mirroring = props.mirror and n_pts >= 2
+                for i, cp in enumerate(props.control_points):
+                    pct = int(round((i + 1) / n_total * 100))
+                    mirror_idx = n_pts - 1 - i
+                    is_middle = (mirror_idx == i)
+                    is_mirrored_slave = mirroring and i > mirror_idx
+
+                    r = layout.row(align=True)
+                    if mirroring and not is_middle and not is_mirrored_slave:
+                        pct2 = int(round((mirror_idx + 1) / n_total * 100))
+                        r.label(text="", icon='LINKED')
+                        r.prop(cp, "weight", slider=True, text=f"{pct}% + {pct2}%")
+                    elif is_mirrored_slave:
+                        r.enabled = False
+                        r.label(text="", icon='LINKED')
+                        r.prop(cp, "weight", slider=True, text=f"{pct}%")
+                    elif mirroring and is_middle:
+                        r.label(text="", icon='DECORATE')
+                        r.prop(cp, "weight", slider=True, text=f"{pct}% (mid)")
+                    else:
+                        r.prop(cp, "weight", slider=True, text=f"{pct}%")
+
+
+# ---------------------------------------------------------------------------
+# Adjust Weights sub-panel
+# ---------------------------------------------------------------------------
+
+class VIEW3D_PT_wg_adjust(Panel):
+    bl_label = "Adjust Weights"
+    bl_idname = "VIEW3D_PT_wg_adjust"
+    bl_parent_id = "VIEW3D_PT_weight_gradient"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "BK Weight Gradient"
+
+    poll = classmethod(_poll_mesh)
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.weight_gradient
+        layout.label(text="Select vertices, set offset, apply:", icon='INFO')
+        layout.prop(props, "weight_adjust", slider=True)
+        layout.operator("mesh.wg_adjust_weights", icon='DRIVER_TRANSFORM')
+
+
+# ---------------------------------------------------------------------------
+# Storage sub-panel — saved anchors, selections, presets, file I/O
+# ---------------------------------------------------------------------------
+
+class VIEW3D_PT_wg_storage(Panel):
+    bl_label = "Saved Data & Presets"
+    bl_idname = "VIEW3D_PT_wg_storage"
+    bl_parent_id = "VIEW3D_PT_weight_gradient"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "BK Weight Gradient"
+
+    poll = classmethod(_poll_mesh)
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.weight_gradient
+
+        # -- Saved Anchor Sets ----------------------------------------------
+        box = layout.box()
+        box.label(text="Saved Anchors:", icon='ANCHOR_CENTER')
+
+        grp_row = box.row(align=True)
+        grp_row.label(text="Groups:", icon='FILE_FOLDER')
+        grp_row.operator("mesh.wg_add_anchor_group", text="", icon='ADD')
+        box.template_list(
+            "WG_UL_anchor_groups", "",
+            props, "saved_anchor_groups",
+            props, "active_anchor_group_index",
+            rows=2, maxrows=4,
+        )
+
+        n_groups = len(props.saved_anchor_groups)
+        if n_groups > 0 and 0 <= props.active_anchor_group_index < n_groups:
+            active_grp = props.saved_anchor_groups[props.active_anchor_group_index].name
+            box.label(text=f"In '{active_grp}':", icon='FILTER')
+        else:
+            box.label(text="All anchor sets:")
+            n_groups = 0
+
+        box.template_list(
+            "WG_UL_saved_anchor_sets", "",
+            props, "saved_anchor_sets",
+            props, "active_anchor_set_index",
+            rows=2, maxrows=5,
+        )
+
+        row = box.row(align=True)
+        row.operator("mesh.wg_save_anchor_set", text="Save", icon='ADD')
+        sub = row.row(align=True)
+        sub.enabled = len(props.saved_anchor_sets) > 0
+        op = sub.operator("mesh.wg_load_anchor_set", text="Load", icon='CHECKMARK')
+        op.index = props.active_anchor_set_index
+        sub2 = row.row(align=True)
+        sub2.enabled = (len(props.saved_anchor_sets) > 0 and n_groups > 0)
+        op2 = sub2.operator("mesh.wg_assign_to_group", text="Assign", icon='LINK_BLEND')
+        op2.set_index = props.active_anchor_set_index
 
         # -- Saved Selections -----------------------------------------------
         layout.separator()
         box = layout.box()
+        box.label(text="Saved Gradient Vertices:", icon='RESTRICT_SELECT_OFF')
+
+        n_sel_groups = len(props.saved_selection_groups)
+        sel_grp_row = box.row(align=True)
+        sel_grp_row.label(text="Groups:", icon='FILE_FOLDER')
+        sel_grp_row.operator("mesh.wg_add_selection_group", text="", icon='ADD')
+        box.template_list(
+            "WG_UL_selection_groups", "",
+            props, "saved_selection_groups",
+            props, "active_selection_group_index",
+            rows=2, maxrows=4,
+        )
+
+        if n_sel_groups > 0 and 0 <= props.active_selection_group_index < n_sel_groups:
+            active_sel_grp = props.saved_selection_groups[props.active_selection_group_index].name
+            box.label(text=f"In '{active_sel_grp}':", icon='FILTER')
+        else:
+            box.label(text="All gradient vertices:")
+            n_sel_groups = 0
+
+        box.template_list(
+            "WG_UL_saved_selections", "",
+            props, "saved_selections",
+            props, "active_selection_index",
+            rows=2, maxrows=5,
+        )
+
         row = box.row(align=True)
-        icon = 'TRIA_DOWN' if props.show_saved_selections else 'TRIA_RIGHT'
-        row.prop(props, "show_saved_selections", text="Saved Gradient Vertices",
-                 icon=icon, emboss=False)
-
-        if props.show_saved_selections:
-            n_sel_groups = len(props.saved_selection_groups)
-            sel_grp_box = box.box()
-            row = sel_grp_box.row(align=True)
-            row.label(text="Groups:", icon='FILE_FOLDER')
-            row.operator("mesh.wg_add_selection_group", text="", icon='ADD')
-            sel_grp_box.template_list(
-                "WG_UL_selection_groups", "",
-                props, "saved_selection_groups",
-                props, "active_selection_group_index",
-                rows=2, maxrows=4,
-            )
-
-            if n_sel_groups > 0 and 0 <= props.active_selection_group_index < n_sel_groups:
-                active_sel_grp = props.saved_selection_groups[props.active_selection_group_index].name
-                box.label(text=f"In '{active_sel_grp}':", icon='FILTER')
-            else:
-                box.label(text="All gradient vertices:")
-                n_sel_groups = 0
-
-            box.template_list(
-                "WG_UL_saved_selections", "",
-                props, "saved_selections",
-                props, "active_selection_index",
-                rows=3, maxrows=5,
-            )
-
-            row = box.row(align=True)
-            row.operator("mesh.wg_save_selection", text="Save", icon='ADD')
-            sub = row.row(align=True)
-            sub.enabled = len(props.saved_selections) > 0
-            op = sub.operator("mesh.wg_load_selection", text="Load", icon='CHECKMARK')
-            op.index = props.active_selection_index
-            sub2 = row.row(align=True)
-            sub2.enabled = (len(props.saved_selections) > 0 and n_sel_groups > 0)
-            op2 = sub2.operator("mesh.wg_assign_selection_to_group", text="Assign", icon='LINK_BLEND')
-            op2.set_index = props.active_selection_index
-
-        # -- Adjust Weights -------------------------------------------------
-        layout.separator()
-        box = layout.box()
-        row = box.row(align=True)
-        icon = 'TRIA_DOWN' if props.show_adjust else 'TRIA_RIGHT'
-        row.prop(props, "show_adjust", text="Adjust Weights", icon=icon, emboss=False)
-
-        if props.show_adjust:
-            box.label(text="Select vertices, set offset, apply:", icon='INFO')
-            box.prop(props, "weight_adjust", slider=True)
-            box.operator("mesh.wg_adjust_weights", icon='DRIVER_TRANSFORM')
+        row.operator("mesh.wg_save_selection", text="Save", icon='ADD')
+        sub = row.row(align=True)
+        sub.enabled = len(props.saved_selections) > 0
+        op = sub.operator("mesh.wg_load_selection", text="Load", icon='CHECKMARK')
+        op.index = props.active_selection_index
+        sub2 = row.row(align=True)
+        sub2.enabled = (len(props.saved_selections) > 0 and n_sel_groups > 0)
+        op2 = sub2.operator("mesh.wg_assign_selection_to_group", text="Assign", icon='LINK_BLEND')
+        op2.set_index = props.active_selection_index
 
         # -- Settings Presets -----------------------------------------------
         layout.separator()
         box = layout.box()
+        box.label(text="Settings Presets:", icon='PRESET')
+        box.template_list(
+            "WG_UL_full_presets", "",
+            props, "saved_full_presets",
+            props, "active_full_preset_index",
+            rows=2, maxrows=5,
+        )
         row = box.row(align=True)
-        icon = 'TRIA_DOWN' if props.show_full_presets else 'TRIA_RIGHT'
-        row.prop(props, "show_full_presets", text="Settings Presets", icon=icon, emboss=False)
-
-        if props.show_full_presets:
-            box.template_list(
-                "WG_UL_full_presets", "",
-                props, "saved_full_presets",
-                props, "active_full_preset_index",
-                rows=2, maxrows=5,
-            )
-            row = box.row(align=True)
-            row.operator("mesh.wg_save_full_preset", text="Save", icon='ADD')
-            sub = row.row(align=True)
-            sub.enabled = len(props.saved_full_presets) > 0
-            op = sub.operator("mesh.wg_load_full_preset", text="Load", icon='CHECKMARK')
-            op.index = props.active_full_preset_index
+        row.operator("mesh.wg_save_full_preset", text="Save", icon='ADD')
+        sub = row.row(align=True)
+        sub.enabled = len(props.saved_full_presets) > 0
+        op = sub.operator("mesh.wg_load_full_preset", text="Load", icon='CHECKMARK')
+        op.index = props.active_full_preset_index
 
         # -- Presets File (Export / Import) ---------------------------------
         layout.separator()
@@ -439,4 +471,7 @@ classes = (
     WG_UL_saved_anchor_sets,
     WG_UL_full_presets,
     VIEW3D_PT_weight_gradient,
+    VIEW3D_PT_wg_curve,
+    VIEW3D_PT_wg_adjust,
+    VIEW3D_PT_wg_storage,
 )
