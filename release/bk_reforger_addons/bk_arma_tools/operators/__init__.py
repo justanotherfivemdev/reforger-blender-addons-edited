@@ -3,7 +3,6 @@ from .presets import (
     ARVEHICLES_OT_preset_separation,
     ARVEHICLES_OT_skip_preset_item,
     ARVEHICLES_OT_reset_preset,
-    # REMOVE ARVEHICLES_OT_parent_bones FROM HERE
 )
 
 from .collisions import (
