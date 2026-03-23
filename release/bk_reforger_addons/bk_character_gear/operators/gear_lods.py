@@ -22,10 +22,40 @@ def _duplicate_and_decimate(context, source, name, ratio, triangulate=False):
     context.view_layer.objects.active = new_obj
     try:
         bpy.ops.object.modifier_apply(modifier=dec_mod.name)
-    except Exception as exc:
-        new_obj.modifiers.remove(dec_mod)
-        raise exc
+    except Exception:
+        # Modifier application failed; clean up the partially created object
+        # Remove the decimate modifier if it still exists
+        try:
+            new_obj.modifiers.remove(dec_mod)
+        except Exception:
+            # If removing the modifier fails, continue cleanup anyway
+            pass
 
+        # Unlink the object from any collections it was linked into
+        for col in list(new_obj.users_collection):
+            try:
+                col.objects.unlink(new_obj)
+            except Exception:
+                # Ignore failures while attempting to restore initial state
+                pass
+
+        # Remove the object from bpy.data (also ensures it is unlinked from scenes)
+        try:
+            bpy.data.objects.remove(new_obj, do_unlink=True)
+        except Exception:
+            # If this fails, we still re-raise the original error
+            pass
+
+        # Remove the duplicated mesh data if it has no remaining users
+        try:
+            if new_data.users == 0:
+                bpy.data.meshes.remove(new_data)
+        except Exception:
+            # Mesh removal failure should not mask the original error
+            pass
+
+        # Re-raise the original exception with its original traceback
+        raise
     return new_obj
 
 

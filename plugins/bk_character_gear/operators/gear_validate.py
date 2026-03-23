@@ -252,7 +252,7 @@ def _check_lod_poly_counts(objects):
                                f"LOD{level} should have fewer faces than LOD{level - 1}"))
             prev_count = count
 
-        # Check Shadow/View against the lowest LOD level
+        # Check Shadow/View against the highest-numbered (lowest-detail) LOD
         if base in special_lods:
             lowest_lod = lods[max(sorted_levels)]
             lowest_count = len(lowest_lod.data.polygons)

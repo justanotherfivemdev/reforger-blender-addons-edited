@@ -15,8 +15,8 @@ class CHARGEAR_OT_export_gear(bpy.types.Operator):
     filter_glob: StringProperty(default="*.fbx", options={'HIDDEN'})
 
     apply_transforms: BoolProperty(
-        name="Apply Rotation & Scale",
-        description="Apply object rotation and scale before export (location is not applied)",
+        name="Apply Transforms",
+        description="Apply all transforms before export",
         default=True,
     )
 
@@ -52,26 +52,19 @@ class CHARGEAR_OT_export_gear(bpy.types.Operator):
 
         # Apply transforms if requested
         if self.apply_transforms:
-            # Only apply transforms to meshes and armatures
-            transform_objects = [
-                o for o in export_objects if o.type in ('MESH', 'ARMATURE')
-            ]
-            if transform_objects:
-                # Temporarily select only the objects we want to transform
-                bpy.ops.object.select_all(action='DESELECT')
-                for obj in transform_objects:
+            for obj in export_objects:
+                if obj.type in ('MESH', 'ARMATURE'):
+                    # Apply transforms to this object only
+                    bpy.ops.object.select_all(action='DESELECT')
                     obj.select_set(True)
-                # Set a valid active object for the operator
-                context.view_layer.objects.active = transform_objects[0]
-                try:
-                    bpy.ops.object.transform_apply(
-                        location=False, rotation=True, scale=True)
-                except Exception as exc:
-                    # Report a warning for each object that may have failed
-                    for obj in transform_objects:
+                    context.view_layer.objects.active = obj
+                    try:
+                        bpy.ops.object.transform_apply(
+                            location=False, rotation=True, scale=True)
+                    except Exception as exc:
                         self.report(
                             {'WARNING'},
-                            f"Failed to apply transforms to '{obj.name}': {exc}",
+                            f"Failed to apply transforms to {obj.name}: {exc}",
                         )
 
         # Re-select after transform application
