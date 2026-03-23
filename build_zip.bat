@@ -29,6 +29,7 @@ build_zip('bk_weapon_rig_replacer')
 build_zip('bk_fbx_exporter')
 build_zip('bk_animation_export_profile')
 build_zip('bk_crater_generator')
+build_zip('bk_character_gear')
 "
 
 cd /d "%SCRIPT_DIR%"
