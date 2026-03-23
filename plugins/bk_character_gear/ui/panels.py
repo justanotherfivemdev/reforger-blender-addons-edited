@@ -49,6 +49,12 @@ class CHARGEAR_PT_panel(bpy.types.Panel):
         op.gear_type = scene.chargear_type
         col.operator("chargear.transfer_weights", text="Transfer Weights", icon='WPAINT_HLT')
 
+        col.separator()
+        col.label(text="BI Oct 2024 Skeleton Update:")
+        col.operator("chargear.migrate_facial_weights",
+                     text="Migrate Facial Weights → Head",
+                     icon='BONE_DATA')
+
         # ============================================================
         # LODs
         # ============================================================

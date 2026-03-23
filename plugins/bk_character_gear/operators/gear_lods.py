@@ -56,11 +56,9 @@ class CHARGEAR_OT_create_gear_lods(bpy.types.Operator):
             for col in source.users_collection:
                 col.objects.link(new_obj)
 
-            # Copy armature modifiers from source so LODs stay rigged
-            for mod in source.modifiers:
-                if mod.type == 'ARMATURE':
-                    new_mod = new_obj.modifiers.new(name=mod.name, type='ARMATURE')
-                    new_mod.object = mod.object
+            # NOTE: source.copy() already duplicates ALL modifiers from source
+            # (including any Armature modifiers with correct object references).
+            # Do NOT add armature modifiers again — that would create duplicates.
 
             # Apply decimate modifier
             dec_mod = new_obj.modifiers.new(name="Decimate", type='DECIMATE')

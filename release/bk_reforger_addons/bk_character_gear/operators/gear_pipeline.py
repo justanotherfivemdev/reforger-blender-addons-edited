@@ -104,7 +104,7 @@ class CHARGEAR_OT_full_pipeline(bpy.types.Operator):
 
         # ── Step 6: Validate ────────────────────────────────────────────
         try:
-            issues = validate_gear_objects(list(bpy.data.objects))
+            issues = validate_gear_objects(list(context.scene.objects))
             errors = [m for sev, m in issues if sev == 'ERROR']
             warnings = [m for sev, m in issues if sev == 'WARNING']
             for sev, msg in issues:
