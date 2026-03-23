@@ -65,7 +65,10 @@ class CHARGEAR_OT_create_gear_collider(bpy.types.Operator):
             collider_obj.modifiers.remove(dec_mod)
 
         # Set layer preset property (Character or FireGeo for armored gear)
+        # Both "usage" and "layer_preset" are set for compatibility with the
+        # BK FBX Exporter validators and Enfusion Workbench.
         collider_obj["usage"] = self.layer_preset
+        collider_obj["layer_preset"] = self.layer_preset
 
         # Wire display so it is visually distinct
         collider_obj.display_type = 'WIRE'
@@ -146,6 +149,7 @@ class CHARGEAR_OT_create_primitive_collider(bpy.types.Operator):
             prim.data.name = collider_name
 
         prim["usage"] = self.layer_preset
+        prim["layer_preset"] = self.layer_preset
         prim.display_type = 'WIRE'
 
         self.report({'INFO'},
