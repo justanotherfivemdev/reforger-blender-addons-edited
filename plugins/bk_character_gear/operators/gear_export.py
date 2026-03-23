@@ -54,12 +54,18 @@ class CHARGEAR_OT_export_gear(bpy.types.Operator):
         if self.apply_transforms:
             for obj in export_objects:
                 if obj.type in ('MESH', 'ARMATURE'):
+                    # Apply transforms to this object only
+                    bpy.ops.object.select_all(action='DESELECT')
+                    obj.select_set(True)
                     context.view_layer.objects.active = obj
                     try:
                         bpy.ops.object.transform_apply(
                             location=False, rotation=True, scale=True)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        self.report(
+                            {'WARNING'},
+                            f"Failed to apply transforms to {obj.name}: {exc}",
+                        )
 
         # Re-select after transform application
         bpy.ops.object.select_all(action='DESELECT')
