@@ -32,9 +32,11 @@ except ImportError:
         issues = []
         mesh_objects = [o for o in objects if o.type == 'MESH']
         lod_pattern = re.compile(r'_LOD(\d+)$', re.IGNORECASE)
+        special_lod_pattern = re.compile(r'_(Shadow|View)$', re.IGNORECASE)
         lod_objects = [o for o in mesh_objects if lod_pattern.search(o.name)]
         non_lod = [o for o in mesh_objects
                    if not lod_pattern.search(o.name)
+                   and not special_lod_pattern.search(o.name)
                    and not any(o.name.upper().startswith(p)
                                for p in COLLIDER_PREFIXES + SPECIAL_PREFIXES)]
         if lod_objects and non_lod:

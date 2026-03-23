@@ -73,6 +73,7 @@ class CHARGEAR_OT_export_gear(bpy.types.Operator):
             context.view_layer.objects.active = armature
 
         # Export FBX with Enfusion-compatible settings
+        # Aligned with the BK FBX Exporter conventions for Arma Reforger.
         try:
             bpy.ops.export_scene.fbx(
                 filepath=self.filepath,
@@ -82,9 +83,13 @@ class CHARGEAR_OT_export_gear(bpy.types.Operator):
                 axis_up='Z',
                 use_mesh_modifiers=True,
                 mesh_smooth_type='FACE',
+                use_subsurf=False,
                 add_leaf_bones=False,
-                use_armature_deform_only=True,
+                primary_bone_axis='Y',
+                secondary_bone_axis='X',
+                use_armature_deform_only=False,
                 bake_anim=False,
+                use_custom_props=True,
             )
         except Exception as exc:
             self.report({'ERROR'}, f"FBX export failed: {exc}")
