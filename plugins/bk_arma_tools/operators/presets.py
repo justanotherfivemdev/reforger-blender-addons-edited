@@ -2,22 +2,29 @@ import bpy
 import bmesh
 from mathutils import Vector
 
+from ..constants import get_mode, get_bone_prefix
+
+_VEHICLE_BONE_DEFAULTS = "v_door_left,v_door_right,v_hood,v_trunk,v_wheel_1,v_wheel_2,v_wheel_3,v_wheel_4"
+_VEHICLE_SOCKET_DEFAULTS = "Socket_Door,Socket_Door,Socket_Hood,Socket_Trunk,Socket_Wheel,Socket_Wheel,Socket_Wheel,Socket_Wheel"
+_WEAPON_BONE_DEFAULTS = "w_trigger,w_bolt,w_charging_handle,w_fire_mode,w_safety,w_mag_release,w_sight"
+_WEAPON_SOCKET_DEFAULTS = "slot_magazine,slot_optics,slot_barrel_muzzle,snap_hand_right,snap_hand_left,eye,barrel_chamber,barrel_muzzle"
+
 class ARVEHICLES_OT_manage_presets(bpy.types.Operator):
     bl_idname = "arvehicles.manage_presets"
-    bl_label = "Manage Vehicle Presets"
+    bl_label = "Manage Presets"
     bl_options = {'REGISTER', 'UNDO'}
     bl_description = "Create and manage lists of bone/socket names for two-phase separation"
-    
+
     preset_name: bpy.props.StringProperty(name="Preset Name", default="MyVehicle")
-    
+
     bone_names: bpy.props.StringProperty(
-        name="Bone Names", 
-        default="v_door_left,v_door_right,v_hood,v_trunk,v_wheel_1,v_wheel_2,v_wheel_3,v_wheel_4",
+        name="Bone Names",
+        default=_VEHICLE_BONE_DEFAULTS,
         description="Comma-separated list of bone names"
     )
     socket_names: bpy.props.StringProperty(
         name="Socket Names",
-        default="Socket_Door,Socket_Door,Socket_Hood,Socket_Trunk,Socket_Wheel,Socket_Wheel,Socket_Wheel,Socket_Wheel", 
+        default=_VEHICLE_SOCKET_DEFAULTS,
         description="Comma-separated list of socket names"
     )
     
@@ -58,7 +65,8 @@ class ARVEHICLES_OT_manage_presets(bpy.types.Operator):
                 scene[f"{preset_prefix}bone_{i}"] = bones[i]
             else:
                 # If we run out of bones, create generic names
-                scene[f"{preset_prefix}bone_{i}"] = f"v_component_{i+1:03d}"
+                prefix = get_bone_prefix(context)
+                scene[f"{preset_prefix}bone_{i}"] = f"{prefix}component_{i+1:03d}"
         
         # Store socket data - pad with generic names if needed
         for i in range(max_count):
@@ -84,6 +92,15 @@ class ARVEHICLES_OT_manage_presets(bpy.types.Operator):
         return {'FINISHED'}
     
     def invoke(self, context, event):
+        mode = get_mode(context)
+        if mode == "WEAPON":
+            self.preset_name = "MyWeapon"
+            self.bone_names = _WEAPON_BONE_DEFAULTS
+            self.socket_names = _WEAPON_SOCKET_DEFAULTS
+        else:
+            self.preset_name = "MyVehicle"
+            self.bone_names = _VEHICLE_BONE_DEFAULTS
+            self.socket_names = _VEHICLE_SOCKET_DEFAULTS
         return context.window_manager.invoke_props_dialog(self, width=400)
     
     def draw(self, context):
@@ -114,8 +131,11 @@ class ARVEHICLES_OT_preset_separation(bpy.types.Operator):
     bl_description = "Separate component using current preset item — opens full separation dialog pre-filled with preset values"
 
     # ---- All the same properties as ARVEHICLES_OT_separate_components ----
-    from ..constants import VEHICLE_COMPONENT_TYPES as _comp_types
-    component_type: bpy.props.EnumProperty(name="Component Type", items=_comp_types, default='door')
+    def _get_component_items(self, context):
+        from ..constants import get_component_types
+        return get_component_types(context)
+
+    component_type: bpy.props.EnumProperty(name="Component Type", items=_get_component_items)
     custom_name: bpy.props.StringProperty(name="Custom Name", default="")
 
     add_socket: bpy.props.BoolProperty(name="Add Socket", default=True)
@@ -169,7 +189,14 @@ class ARVEHICLES_OT_preset_separation(bpy.types.Operator):
     )
 
     def get_available_bones(self, context):
-        items = [('NONE', "v_body (Default)", "Parent to v_body or v_root")]
+        mode = get_mode(context)
+        if mode == "WEAPON":
+            default_label = "w_root (Default)"
+            default_desc = "Parent to w_root"
+        else:
+            default_label = "v_body (Default)"
+            default_desc = "Parent to v_body or v_root"
+        items = [('NONE', default_label, default_desc)]
         for obj in bpy.data.objects:
             if obj.type == 'ARMATURE':
                 for bone in obj.data.bones:
@@ -379,7 +406,9 @@ class ARVEHICLES_OT_preset_separation(bpy.types.Operator):
                     ib.label(text=f"New Bone → {self.target_bone}", icon='INFO')
             else:
                 ib = box.box()
-                ib.label(text="Default: Bone → v_body", icon='INFO')
+                mode = get_mode(context)
+                default_parent = "w_root" if mode == "WEAPON" else "v_body"
+                ib.label(text=f"Default: Bone → {default_parent}", icon='INFO')
         else:
             box.separator()
             box.prop(self, "parent_to_existing_bone")

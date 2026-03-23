@@ -99,6 +99,31 @@ class ARMA_PT_nla_panel(Panel):
             col.scale_y = 1.5
             col.operator("arma.process_nla", icon='NLA_PUSHDOWN')
 
+        # Location Copy/Paste — collapsible
+        header, body = layout.panel("arma_nla_location_copy", default_closed=False)
+        header.label(text="Location Copy/Paste", icon='CON_LOCLIKE')
+        if body:
+            row = body.row(align=True)
+            row.label(text="Axes:")
+            row.prop(arma_props, "loc_copy_x", toggle=True)
+            row.prop(arma_props, "loc_copy_y", toggle=True)
+            row.prop(arma_props, "loc_copy_z", toggle=True)
+
+            row = body.row(align=True)
+            row.operator("arma.copy_bone_location", icon='COPYDOWN')
+            row.operator("arma.paste_bone_location", icon='PASTEDOWN')
+
+            if arma_props.loc_source_name:
+                vals = []
+                if arma_props.loc_copy_x:
+                    vals.append(f"X:{arma_props.loc_stored[0]:.3f}")
+                if arma_props.loc_copy_y:
+                    vals.append(f"Y:{arma_props.loc_stored[1]:.3f}")
+                if arma_props.loc_copy_z:
+                    vals.append(f"Z:{arma_props.loc_stored[2]:.3f}")
+                if vals:
+                    body.label(text=f"{arma_props.loc_source_name}: {', '.join(vals)}")
+
         # Animation Switcher — collapsible
         header, body = layout.panel("arma_nla_switcher", default_closed=False)
         header_row = header.row(align=True)
@@ -132,31 +157,6 @@ class ARMA_PT_nla_panel(Panel):
                 refresh_row = body.row()
                 refresh_row.scale_y = 1.2
                 refresh_row.operator("arma.update_switcher", text="Load", icon='FILE_REFRESH')
-
-        # Location Copy/Paste — collapsible
-        header, body = layout.panel("arma_nla_location_copy", default_closed=False)
-        header.label(text="Location Copy/Paste", icon='CON_LOCLIKE')
-        if body:
-            row = body.row(align=True)
-            row.label(text="Axes:")
-            row.prop(arma_props, "loc_copy_x", toggle=True)
-            row.prop(arma_props, "loc_copy_y", toggle=True)
-            row.prop(arma_props, "loc_copy_z", toggle=True)
-
-            row = body.row(align=True)
-            row.operator("arma.copy_bone_location", icon='COPYDOWN')
-            row.operator("arma.paste_bone_location", icon='PASTEDOWN')
-
-            if arma_props.loc_source_name:
-                vals = []
-                if arma_props.loc_copy_x:
-                    vals.append(f"X:{arma_props.loc_stored[0]:.3f}")
-                if arma_props.loc_copy_y:
-                    vals.append(f"Y:{arma_props.loc_stored[1]:.3f}")
-                if arma_props.loc_copy_z:
-                    vals.append(f"Z:{arma_props.loc_stored[2]:.3f}")
-                if vals:
-                    body.label(text=f"{arma_props.loc_source_name}: {', '.join(vals)}")
 
         # Utilities — collapsible
         header, body = layout.panel("arma_nla_utilities", default_closed=False)
