@@ -338,7 +338,6 @@ def _check_scale_applied(objects):
     Per BI documentation: apply rotation and scale (but NOT location) before export.
     """
     issues = []
-    from math import radians
     for obj in objects:
         if (obj.type not in ('MESH', 'ARMATURE')
                 or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
