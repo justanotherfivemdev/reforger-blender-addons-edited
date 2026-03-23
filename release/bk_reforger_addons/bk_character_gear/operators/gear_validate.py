@@ -206,10 +206,14 @@ def _check_lod_poly_counts(objects):
     """
     LOD meshes must have strictly decreasing face counts.
     LOD1 must have fewer faces than LOD0, etc.
+    Shadow and View LODs must have fewer faces than the lowest numbered LOD.
     """
     issues = []
     lod_pattern = re.compile(r'^(.+?)_LOD(\d+)$', re.IGNORECASE)
+    special_pattern = re.compile(r'^(.+?)_(Shadow|View)$', re.IGNORECASE)
     lod_groups: dict = {}
+    special_lods: dict = {}
+
     for obj in objects:
         if obj.type != 'MESH' or obj.name.startswith(CHAR_TEMPLATE_PREFIX):
             continue
@@ -217,6 +221,11 @@ def _check_lod_poly_counts(objects):
         if m:
             base, level = m.group(1), int(m.group(2))
             lod_groups.setdefault(base, {})[level] = obj
+            continue
+        m = special_pattern.match(obj.name)
+        if m:
+            base, kind = m.group(1), m.group(2)
+            special_lods.setdefault(base, {})[kind] = obj
 
     for base, lods in lod_groups.items():
         sorted_levels = sorted(lods.keys())
@@ -234,11 +243,28 @@ def _check_lod_poly_counts(objects):
                                f"LOD{level} should have fewer faces than LOD{level - 1}"))
             prev_count = count
 
+        # Check Shadow/View against the lowest LOD level
+        if base in special_lods:
+            lowest_lod = lods[max(sorted_levels)]
+            lowest_count = len(lowest_lod.data.polygons)
+            for kind, obj in special_lods[base].items():
+                count = len(obj.data.polygons)
+                if count >= lowest_count:
+                    issues.append(('WARNING',
+                                   f"'{obj.name}' has {count} face(s) but "
+                                   f"'{lowest_lod.name}' has {lowest_count} — "
+                                   f"{kind} LOD should have fewer faces"))
+
     return issues
 
 
 def _check_gear_colliders(objects):
-    """Gear colliders must have usage='Character' (BI Layer Preset requirement)."""
+    """
+    Gear colliders must have a valid usage property.
+    Standard gear uses 'Character'; armored/protective gear uses 'FireGeo'
+    (per BI vest/armor documentation for ballistic protection).
+    """
+    valid_gear_usages = {'Character', 'FireGeo'}
     issues = []
     for obj in objects:
         if not _is_collider(obj) or obj.name.startswith(CHAR_TEMPLATE_PREFIX):
@@ -247,11 +273,11 @@ def _check_gear_colliders(objects):
         if not usage:
             issues.append(('WARNING',
                            f"Collider '{obj.name}' has no 'usage' custom property — "
-                           "set it to 'Character' for gear collision"))
-        elif usage != 'Character':
+                           "set it to 'Character' or 'FireGeo' for gear collision"))
+        elif usage not in valid_gear_usages:
             issues.append(('WARNING',
                            f"Collider '{obj.name}' has usage='{usage}' — "
-                           "expected 'Character' for character gear"))
+                           "expected 'Character' or 'FireGeo' for character gear"))
     return issues
 
 

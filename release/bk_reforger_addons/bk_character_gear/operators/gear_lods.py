@@ -1,7 +1,32 @@
 import bpy
-from bpy.props import IntProperty
+from bpy.props import IntProperty, BoolProperty
 
-from ..constants import GEAR_LOD_RATIOS
+from ..constants import GEAR_LOD_RATIOS, SHADOW_LOD_RATIO, VIEW_LOD_RATIO
+
+
+def _duplicate_and_decimate(context, source, name, ratio, triangulate=False):
+    """Duplicate *source*, decimate to *ratio*, and return the new object."""
+    new_data = source.data.copy()
+    new_obj = source.copy()
+    new_obj.data = new_data
+    new_obj.name = name
+    new_obj.data.name = name
+
+    for col in source.users_collection:
+        col.objects.link(new_obj)
+
+    dec_mod = new_obj.modifiers.new(name="Decimate", type='DECIMATE')
+    dec_mod.ratio = ratio
+    dec_mod.use_collapse_triangulate = triangulate
+
+    context.view_layer.objects.active = new_obj
+    try:
+        bpy.ops.object.modifier_apply(modifier=dec_mod.name)
+    except Exception as exc:
+        new_obj.modifiers.remove(dec_mod)
+        raise exc
+
+    return new_obj
 
 
 class CHARGEAR_OT_create_gear_lods(bpy.types.Operator):
@@ -16,6 +41,18 @@ class CHARGEAR_OT_create_gear_lods(bpy.types.Operator):
         default=3,
         min=1,
         max=4,
+    )
+
+    create_shadow_lod: BoolProperty(
+        name="Shadow LOD",
+        description="Generate a very low-poly Shadow LOD for shadow rendering",
+        default=True,
+    )
+
+    create_view_lod: BoolProperty(
+        name="View LOD",
+        description="Generate an optional simplified View LOD for extreme distances",
+        default=False,
     )
 
     def execute(self, context):
@@ -41,38 +78,48 @@ class CHARGEAR_OT_create_gear_lods(bpy.types.Operator):
         ratios = GEAR_LOD_RATIOS[:self.lod_levels]
         created = []
 
+        # ── Standard LODs ───────────────────────────────────────────────
         for i, ratio in enumerate(ratios):
             lod_level = i + 1
             lod_name = f"{base_name}_LOD{lod_level}"
 
-            # Duplicate source
-            new_data = source.data.copy()
-            new_obj = source.copy()
-            new_obj.data = new_data
-            new_obj.name = lod_name
-            new_obj.data.name = lod_name
-
-            # Link to same collections as source
-            for col in source.users_collection:
-                col.objects.link(new_obj)
-
-            # NOTE: source.copy() already duplicates ALL modifiers from source
-            # (including any Armature modifiers with correct object references).
-            # Do NOT add armature modifiers again — that would create duplicates.
-
-            # Apply decimate modifier
-            dec_mod = new_obj.modifiers.new(name="Decimate", type='DECIMATE')
-            dec_mod.ratio = ratio
-            dec_mod.use_collapse_triangulate = False
-
-            context.view_layer.objects.active = new_obj
             try:
-                bpy.ops.object.modifier_apply(modifier=dec_mod.name)
+                _duplicate_and_decimate(context, source, lod_name, ratio)
+                created.append(lod_name)
             except Exception as exc:
                 self.report({'WARNING'}, f"Could not apply decimate to '{lod_name}': {exc}")
-                new_obj.modifiers.remove(dec_mod)
 
-            created.append(lod_name)
+        # ── Shadow LOD ──────────────────────────────────────────────────
+        if self.create_shadow_lod:
+            shadow_name = f"{base_name}_Shadow"
+            try:
+                shadow_obj = _duplicate_and_decimate(
+                    context, source, shadow_name, SHADOW_LOD_RATIO,
+                    triangulate=True,
+                )
+                # Remove armature modifiers — shadow meshes are not skinned
+                for mod in list(shadow_obj.modifiers):
+                    if mod.type == 'ARMATURE':
+                        shadow_obj.modifiers.remove(mod)
+                created.append(shadow_name)
+            except Exception as exc:
+                self.report({'WARNING'}, f"Could not create Shadow LOD: {exc}")
+
+        # ── View LOD (optional) ─────────────────────────────────────────
+        if self.create_view_lod:
+            view_name = f"{base_name}_View"
+            try:
+                view_obj = _duplicate_and_decimate(
+                    context, source, view_name, VIEW_LOD_RATIO,
+                    triangulate=True,
+                )
+                # Remove armature modifiers — view meshes are not skinned
+                for mod in list(view_obj.modifiers):
+                    if mod.type == 'ARMATURE':
+                        view_obj.modifiers.remove(mod)
+                created.append(view_name)
+            except Exception as exc:
+                self.report({'WARNING'}, f"Could not create View LOD: {exc}")
 
         self.report({'INFO'}, f"Created {len(created)} LOD level(s): {', '.join(created)}")
         return {'FINISHED'}
