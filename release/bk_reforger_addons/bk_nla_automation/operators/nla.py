@@ -129,9 +129,17 @@ class ARMA_OT_process_nla(Operator):
                 self.report({'WARNING'}, f"Error processing {item.original_name}: {str(e)}")
                 error_count += 1
 
-        # Set active action based on the "Set First as Active" flag
-        if processed_count > 0 and arma_props.set_active_action and first_new_action:
-            armature.animation_data.action = first_new_action
+        # After processing, mute all tracks then activate the first new action
+        # properly via do_switch_animation (which un-mutes only the relevant track).
+        if processed_count > 0:
+            # Mute everything first — process_nla leaves all tracks un-muted
+            for track in armature.animation_data.nla_tracks:
+                track.mute = True
+
+            if arma_props.set_active_action and first_new_action:
+                do_switch_animation(context, first_new_action.name)
+            else:
+                armature.animation_data.action = original_action
         else:
             armature.animation_data.action = original_action
 
