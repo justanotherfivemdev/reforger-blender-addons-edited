@@ -260,6 +260,12 @@ GEAR_BONE_MAPPING = {
 # Less aggressive than vehicles; gear is seen close-up.
 GEAR_LOD_RATIOS = [0.5, 0.25, 0.12]
 
+# Shadow LOD — very low poly mesh used only for shadow rendering.
+SHADOW_LOD_RATIO = 0.05
+
+# View LOD — optional simplified version for extreme distances.
+VIEW_LOD_RATIO = 0.10
+
 # ── Character template reference ───────────────────────────────────────────────
 # The official BI reference file distributed with SampleMod_NewCharacter.
 # Users should browse for this file to enable template-based visualisation.

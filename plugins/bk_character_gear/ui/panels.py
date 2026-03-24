@@ -76,6 +76,8 @@ class CHARGEAR_PT_panel(bpy.types.Panel):
         op = box.operator("chargear.full_pipeline", text="Full Gear Pipeline", icon='SHADERFX')
         op.gear_type = scene.chargear_type
         op.gear_name = scene.chargear_name
+        op.create_shadow_lod = True
+        op.create_view_lod = False
 
         # ============================================================
         # RIGGING
@@ -98,7 +100,17 @@ class CHARGEAR_PT_panel(bpy.types.Panel):
         # ============================================================
         box = layout.box()
         box.label(text="LODs", icon='MOD_DECIM')
-        box.operator("chargear.create_gear_lods", text="Create Gear LODs", icon='TRIA_DOWN_BAR')
+        col = box.column(align=True)
+        col.operator("chargear.create_gear_lods", text="Create Gear LODs", icon='TRIA_DOWN_BAR')
+        row = col.row(align=True)
+        op = row.operator("chargear.create_gear_lods", text="+ 1 LOD + Shadow", icon='SHADING_RENDERED')
+        op.create_shadow_lod = True
+        op.create_view_lod = False
+        op.lod_levels = 1
+        op = row.operator("chargear.create_gear_lods", text="+ 1 LOD + View", icon='HIDE_OFF')
+        op.create_shadow_lod = False
+        op.create_view_lod = True
+        op.lod_levels = 1
 
         # ============================================================
         # COLLISION
@@ -115,6 +127,13 @@ class CHARGEAR_PT_panel(bpy.types.Panel):
         box = layout.box()
         box.label(text="Validation", icon='CHECKMARK')
         box.operator("chargear.validate_gear", text="Validate Gear", icon='VIEWZOOM')
+
+        # ============================================================
+        # EXPORT
+        # ============================================================
+        box = layout.box()
+        box.label(text="Export", icon='EXPORT')
+        box.operator("chargear.export_gear", text="Export Gear FBX", icon='FILE_BLANK')
 
         # ============================================================
         # INFO

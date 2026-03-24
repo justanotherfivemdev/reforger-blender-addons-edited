@@ -23,6 +23,7 @@ from .operators import (
     CHARGEAR_OT_create_primitive_collider,
     CHARGEAR_OT_validate_gear,
     CHARGEAR_OT_full_pipeline,
+    CHARGEAR_OT_export_gear,
     CHARGEAR_OT_load_character_template,
     CHARGEAR_OT_remove_character_template,
 )
@@ -39,6 +40,7 @@ classes = (
     CHARGEAR_OT_create_primitive_collider,
     CHARGEAR_OT_validate_gear,
     CHARGEAR_OT_full_pipeline,
+    CHARGEAR_OT_export_gear,
     CHARGEAR_OT_load_character_template,
     CHARGEAR_OT_remove_character_template,
     CHARGEAR_PT_panel,

@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import StringProperty, EnumProperty, IntProperty
+from bpy.props import StringProperty, EnumProperty, IntProperty, BoolProperty
 
 from ..constants import GEAR_TYPE_ITEMS, GEAR_BONE_MAPPING, GEAR_LOD_RATIOS
 from .gear_validate import validate_gear_objects
@@ -30,6 +30,16 @@ class CHARGEAR_OT_full_pipeline(bpy.types.Operator):
         default=3,
         min=1,
         max=4,
+    )
+    create_shadow_lod: BoolProperty(
+        name="Shadow LOD",
+        description="Generate a very low-poly Shadow LOD for shadow rendering",
+        default=True,
+    )
+    create_view_lod: BoolProperty(
+        name="View LOD",
+        description="Generate an optional simplified View LOD for extreme distances",
+        default=False,
     )
 
     def invoke(self, context, event):
@@ -77,8 +87,17 @@ class CHARGEAR_OT_full_pipeline(bpy.types.Operator):
             bpy.ops.object.select_all(action='DESELECT')
             lod0.select_set(True)
             context.view_layer.objects.active = lod0
-            bpy.ops.chargear.create_gear_lods(lod_levels=self.lod_levels)
-            summary.append(f"✓ LODs (x{self.lod_levels})")
+            bpy.ops.chargear.create_gear_lods(
+                lod_levels=self.lod_levels,
+                create_shadow_lod=self.create_shadow_lod,
+                create_view_lod=self.create_view_lod,
+            )
+            lod_parts = [f"x{self.lod_levels}"]
+            if self.create_shadow_lod:
+                lod_parts.append("Shadow")
+            if self.create_view_lod:
+                lod_parts.append("View")
+            summary.append(f"✓ LODs ({', '.join(lod_parts)})")
         except Exception as exc:
             self.report({'WARNING'}, f"LOD generation step failed (continuing): {exc}")
             summary.append("✗ LODs (failed)")

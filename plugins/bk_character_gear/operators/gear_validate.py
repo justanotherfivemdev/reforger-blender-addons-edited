@@ -32,15 +32,24 @@ except ImportError:
         issues = []
         mesh_objects = [o for o in objects if o.type == 'MESH']
         lod_pattern = re.compile(r'_LOD(\d+)$', re.IGNORECASE)
+        special_lod_pattern = re.compile(r'_(Shadow|View)$', re.IGNORECASE)
         lod_objects = [o for o in mesh_objects if lod_pattern.search(o.name)]
         non_lod = [o for o in mesh_objects
                    if not lod_pattern.search(o.name)
+                   and not special_lod_pattern.search(o.name)
                    and not any(o.name.upper().startswith(p)
                                for p in COLLIDER_PREFIXES + SPECIAL_PREFIXES)]
         if lod_objects and non_lod:
             for obj in non_lod:
                 issues.append(('WARNING',
                                 f"'{obj.name}' has no _LOD suffix but other objects do"))
+        # Check for case mismatch — Enfusion expects uppercase _LOD
+        for obj in lod_objects:
+            match = lod_pattern.search(obj.name)
+            if match and '_lod' in obj.name.lower() and '_LOD' not in obj.name:
+                issues.append(('WARNING',
+                               f"'{obj.name}' uses lowercase _lod — "
+                               "Enfusion expects _LOD (uppercase)"))
         lod_bases: dict = {}
         for obj in lod_objects:
             match = lod_pattern.search(obj.name)
@@ -206,10 +215,14 @@ def _check_lod_poly_counts(objects):
     """
     LOD meshes must have strictly decreasing face counts.
     LOD1 must have fewer faces than LOD0, etc.
+    Shadow and View LODs must have fewer faces than the lowest numbered LOD.
     """
     issues = []
     lod_pattern = re.compile(r'^(.+?)_LOD(\d+)$', re.IGNORECASE)
+    special_pattern = re.compile(r'^(.+?)_(Shadow|View)$', re.IGNORECASE)
     lod_groups: dict = {}
+    special_lods: dict = {}
+
     for obj in objects:
         if obj.type != 'MESH' or obj.name.startswith(CHAR_TEMPLATE_PREFIX):
             continue
@@ -217,6 +230,11 @@ def _check_lod_poly_counts(objects):
         if m:
             base, level = m.group(1), int(m.group(2))
             lod_groups.setdefault(base, {})[level] = obj
+            continue
+        m = special_pattern.match(obj.name)
+        if m:
+            base, kind = m.group(1), m.group(2)
+            special_lods.setdefault(base, {})[kind] = obj
 
     for base, lods in lod_groups.items():
         sorted_levels = sorted(lods.keys())
@@ -234,11 +252,29 @@ def _check_lod_poly_counts(objects):
                                f"LOD{level} should have fewer faces than LOD{level - 1}"))
             prev_count = count
 
+        # Check Shadow/View against the highest-numbered (lowest-detail) LOD
+        if base in special_lods:
+            lowest_lod = lods[max(sorted_levels)]
+            lowest_count = len(lowest_lod.data.polygons)
+            for kind, obj in special_lods[base].items():
+                count = len(obj.data.polygons)
+                if count >= lowest_count:
+                    issues.append(('WARNING',
+                                   f"'{obj.name}' has {count} face(s) but "
+                                   f"'{lowest_lod.name}' has {lowest_count} — "
+                                   f"{kind} LOD should have fewer faces"))
+
     return issues
 
 
 def _check_gear_colliders(objects):
-    """Gear colliders must have usage='Character' (BI Layer Preset requirement)."""
+    """
+    Gear colliders must have a valid usage property.
+    Standard gear uses 'Character'; armored/protective gear uses 'FireGeo'
+    (per BI vest/armor documentation for ballistic protection).
+    Also checks for Enfusion's 65535-vertex limit on colliders.
+    """
+    valid_gear_usages = {'Character', 'FireGeo'}
     issues = []
     for obj in objects:
         if not _is_collider(obj) or obj.name.startswith(CHAR_TEMPLATE_PREFIX):
@@ -247,11 +283,16 @@ def _check_gear_colliders(objects):
         if not usage:
             issues.append(('WARNING',
                            f"Collider '{obj.name}' has no 'usage' custom property — "
-                           "set it to 'Character' for gear collision"))
-        elif usage != 'Character':
+                           "set it to 'Character' or 'FireGeo' for gear collision"))
+        elif usage not in valid_gear_usages:
             issues.append(('WARNING',
                            f"Collider '{obj.name}' has usage='{usage}' — "
-                           "expected 'Character' for character gear"))
+                           "expected 'Character' or 'FireGeo' for character gear"))
+        # Enfusion hard limit: 65535 vertices per collider
+        if obj.data and len(obj.data.vertices) > 65535:
+            issues.append(('ERROR',
+                           f"Collider '{obj.name}' has {len(obj.data.vertices)} "
+                           "vertices — Enfusion supports a maximum of 65535 per collider"))
     return issues
 
 
@@ -292,7 +333,10 @@ def _check_scale(objects):
 
 
 def _check_scale_applied(objects):
-    """Warn if any object has unapplied scale (non-unit values)."""
+    """
+    Warn if any object has unapplied scale or rotation (non-identity values).
+    Per BI documentation: apply rotation and scale (but NOT location) before export.
+    """
     issues = []
     for obj in objects:
         if (obj.type not in ('MESH', 'ARMATURE')
@@ -304,6 +348,12 @@ def _check_scale_applied(objects):
                            f"'{obj.name}' has unapplied scale "
                            f"({s.x:.4f}, {s.y:.4f}, {s.z:.4f}) — "
                            "apply scale before export (Ctrl+A > Apply Scale)"))
+        r = obj.rotation_euler
+        if abs(r.x) > 0.0001 or abs(r.y) > 0.0001 or abs(r.z) > 0.0001:
+            issues.append(('WARNING',
+                           f"'{obj.name}' has unapplied rotation "
+                           f"({r.x:.4f}, {r.y:.4f}, {r.z:.4f}) rad — "
+                           "apply rotation before export (Ctrl+A > Apply Rotation)"))
     return issues
 
 
@@ -340,12 +390,17 @@ def _check_triangulation(objects):
 def _check_name_convention(objects):
     """Warn if object names contain characters outside letters, digits, and underscores."""
     bad_chars = re.compile(r'[^A-Za-z0-9_]')
+    dup_suffix = re.compile(r'\.\d{3}$')
     issues = []
     for obj in objects:
         if (obj.type not in ('MESH', 'ARMATURE')
                 or obj.name.startswith(CHAR_TEMPLATE_PREFIX)):
             continue
-        if bad_chars.search(obj.name):
+        if dup_suffix.search(obj.name):
+            issues.append(('WARNING',
+                           f"'{obj.name}' has a Blender duplicate suffix (.001, .002, …) — "
+                           "this will be stripped on Enfusion import and may cause name collisions"))
+        elif bad_chars.search(obj.name):
             issues.append(('WARNING',
                            f"'{obj.name}' contains non-standard characters — "
                            "BI naming should use only letters, digits, and underscores"))

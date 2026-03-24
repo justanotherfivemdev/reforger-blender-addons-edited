@@ -1,12 +1,26 @@
 import bpy
 from bpy.props import StringProperty, EnumProperty, FloatProperty
 
+# Layer preset items for colliders.  "Character" is for general gear collision,
+# "FireGeo" is for armored gear that must stop bullets (per BI vest docs).
+_COLLIDER_LAYER_ITEMS = [
+    ('Character', "Character", "Standard character collision layer"),
+    ('FireGeo',   "FireGeo",   "Ballistic protection layer — stops projectiles (armored vests, plates)"),
+]
+
 
 class CHARGEAR_OT_create_gear_collider(bpy.types.Operator):
     """Generate a UTM_ trimesh collider from the selected gear mesh"""
     bl_idname = "chargear.create_gear_collider"
     bl_label = "Create Gear Collider"
     bl_options = {'REGISTER', 'UNDO'}
+
+    layer_preset: EnumProperty(
+        name="Layer Preset",
+        description="Enfusion layer preset for this collider",
+        items=_COLLIDER_LAYER_ITEMS,
+        default='Character',
+    )
 
     def execute(self, context):
         mesh_objects = [o for o in context.selected_objects if o.type == 'MESH']
@@ -50,13 +64,17 @@ class CHARGEAR_OT_create_gear_collider(bpy.types.Operator):
             self.report({'WARNING'}, f"Could not apply decimate to collider: {exc}")
             collider_obj.modifiers.remove(dec_mod)
 
-        # Set Character layer preset property
-        collider_obj["usage"] = "Character"
+        # Set layer preset property (Character or FireGeo for armored gear)
+        # Both "usage" and "layer_preset" are set for compatibility with the
+        # BK FBX Exporter validators and Enfusion Workbench.
+        collider_obj["usage"] = self.layer_preset
+        collider_obj["layer_preset"] = self.layer_preset
 
         # Wire display so it is visually distinct
         collider_obj.display_type = 'WIRE'
 
-        self.report({'INFO'}, f"Created collider '{collider_name}' with usage='Character'")
+        self.report({'INFO'},
+                    f"Created collider '{collider_name}' with usage='{self.layer_preset}'")
         return {'FINISHED'}
 
 
@@ -73,6 +91,13 @@ class CHARGEAR_OT_create_primitive_collider(bpy.types.Operator):
             ('UCL_', "Capsule (UCL_)", "Capsule collider fitted to bounding box"),
         ],
         default='UBX_',
+    )
+
+    layer_preset: EnumProperty(
+        name="Layer Preset",
+        description="Enfusion layer preset for this collider",
+        items=_COLLIDER_LAYER_ITEMS,
+        default='Character',
     )
 
     def execute(self, context):
@@ -123,8 +148,11 @@ class CHARGEAR_OT_create_primitive_collider(bpy.types.Operator):
         if prim.data:
             prim.data.name = collider_name
 
-        prim["usage"] = "Character"
+        prim["usage"] = self.layer_preset
+        prim["layer_preset"] = self.layer_preset
         prim.display_type = 'WIRE'
 
-        self.report({'INFO'}, f"Created primitive collider '{collider_name}' with usage='Character'")
+        self.report({'INFO'},
+                    f"Created primitive collider '{collider_name}' "
+                    f"with usage='{self.layer_preset}'")
         return {'FINISHED'}
