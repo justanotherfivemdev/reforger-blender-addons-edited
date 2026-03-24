@@ -15,8 +15,8 @@ class CHARGEAR_OT_export_gear(bpy.types.Operator):
     filter_glob: StringProperty(default="*.fbx", options={'HIDDEN'})
 
     apply_transforms: BoolProperty(
-        name="Apply Transforms",
-        description="Apply all transforms before export",
+        name="Apply Rotation & Scale",
+        description="Apply rotation and scale before export (location not applied)",
         default=True,
     )
 
@@ -36,10 +36,13 @@ class CHARGEAR_OT_export_gear(bpy.types.Operator):
         if not self.filepath.lower().endswith('.fbx'):
             self.filepath += '.fbx'
 
-        # Collect exportable objects (exclude character template objects)
+        # Collect exportable objects (exclude character template objects and
+        # non-geometry types such as cameras and lights)
+        exportable_types = {'MESH', 'ARMATURE', 'EMPTY'}
         export_objects = [
             o for o in context.scene.objects
-            if not o.name.startswith(CHAR_TEMPLATE_PREFIX)
+            if o.type in exportable_types
+            and not o.name.startswith(CHAR_TEMPLATE_PREFIX)
         ]
         if not export_objects:
             self.report({'ERROR'}, "No objects to export")
